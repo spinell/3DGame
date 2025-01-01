@@ -1,0 +1,36 @@
+{
+	"name": "Game-Ubuntu",
+	"build": {
+		"dockerfile": "../docker/Dockerfile",
+		"context": ".",
+		"options": [
+
+		],
+		"args": {
+			"--tag": "game-ubuntu:latest"
+		}
+	},
+	"runArgs": [
+
+	],
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {
+			"version": "latest"
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"cmake.configureOnEdit": false,
+				"cmake.automaticReconfigure": false,
+				"cmake.configureOnOpen": false
+			},
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"mhutchie.git-graph",
+				"twxs.cmake"
+			]
+		}
+	}
+}

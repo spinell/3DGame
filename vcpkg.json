@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "dependencies": [
+    {
+      "name": "sdl2",
+      "version>=": "2.30.10",
+      "default-features": false,
+      "features": ["x11", "wayland", "ibus", "alsa"],
+      "platform": "linux"
+    },
+    {
+      "name": "sdl2",
+      "version>=": "2.30.10"
+    },
+    {
+      "name": "spdlog-stdformat",
+      "version>=": "1.15.0"
+    }
+  ],
+  "features": {
+    "tests": {
+      "description": "Build tests",
+      "dependencies": [
+        {
+          "name": "gtest"
+        }
+      ]
+    }
+  }
+}
