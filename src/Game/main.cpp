@@ -1,11 +1,15 @@
+#include "Vulkan/VulkanRenderer.h"
+
 #include <SDL2/SDL.h>
 #include <spdlog/spdlog.h>
 #include "spdlog/fmt/ostr.h" // must be included
+
 
 #include <cstdlib>
 #include <iostream>
 #include <format>
 #include <print>
+
 
 #if SPDLOG_USE_STD_FORMAT
 template <>
@@ -31,7 +35,10 @@ template <> struct fmt::formatter<SDL_version> : fmt::ostream_formatter {};
 #endif
 
 int main(int argc, char* argv[]) {
-    std::print("{0} {2}{1}!\n", "Hello", 23, "C++");
+    VulkanRenderer vulkanRenderer;
+    if (!vulkanRenderer.initialize()) {
+        return -1;
+    }
 
     SDL_version sdlRuntimeVersion{};
     SDL_version sdlCompileVersion{};

@@ -15,6 +15,20 @@
     {
       "name": "spdlog-stdformat",
       "version>=": "1.15.0"
+    },
+    {
+      "$info": "The vulkan headers",
+      "name": "vulkan-headers",
+      "version>=": "1.3.296.0"
+    },
+    {
+      "name": "vulkan-utility-libraries",
+      "version>=": "1.3.296.0"
+    },
+    {
+      "$info": "meta-loader for Vulkan",
+      "name": "volk",
+      "version>=": "1.3.296"
     }
   ],
   "features": {
