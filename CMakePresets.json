@@ -1,0 +1,104 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+      "major": 3,
+      "minor": 28,
+      "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "vcpkg",
+            "hidden": true,
+            "cacheVariables": {
+              "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            }
+        },
+        {
+            "name": "gcc14",
+            "hidden": true,
+            "environment": {
+              "CC": "gcc-14",
+              "CXX": "g++-14"
+            }
+        },
+        {
+            "name": "ninja",
+            "displayName": "Ninja",
+            "description": "Default build using Ninja generator",
+            "generator": "Ninja"
+        },
+        {
+            "name": "ninja-multi",
+            "displayName": "Ninja Multi-Config",
+            "description": "Default build using Ninja Multi-Config generator",
+            "generator": "Ninja Multi-Config"
+        },
+        {
+            "name": "dev-mode",
+            "hidden": true,
+            "cacheVariables": {
+              "VCPKG_MANIFEST_FEATURES": "tests"
+            }
+        },
+        {
+            "name": "ci-vs2022",
+            "displayName": "Visual Studio 2022",
+            "description": "Generate a Visual Studio 2022 solution.",
+            "inherits": ["dev-mode", "vcpkg"],
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "generator": "Visual Studio 17 2022",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "ci-vs2022-clang",
+            "displayName": "Visual Studio 2022 (Clang)",
+            "description": "Generate a Visual Studio 2022 solution.",
+            "inherits": ["ci-vs2022"],
+            "toolset" :{
+                "strategy": "set",
+                "value": "ClangCL"
+            }
+        },
+        {
+            "name": "ci-ninja-multi-gcc14",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "inherits": ["ninja-multi", "gcc14", "dev-mode", "vcpkg"],
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "ci-ninja-multi-gcc14",
+            "displayName": "",
+            "configurePreset": "ci-ninja-multi-gcc14"
+        },
+        {
+            "name": "ci-vs2022",
+            "displayName": "",
+            "configurePreset": "ci-vs2022",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "ci-vs2022-clang",
+            "displayName": "",
+            "configurePreset": "ci-vs2022-clang",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ]
+}
