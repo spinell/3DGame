@@ -2,7 +2,7 @@
 #include "Log.h"
 
 #include <spdlog/spdlog.h>
-#include <sdl2/sdl.h>
+#include <SDL2/SDL.h>
 
 template <>
 struct std::formatter<SDL_version> {
@@ -25,7 +25,7 @@ namespace {
         SDL_VERSION(&sdlCompileVersion);
         SDL_GetVersion(&sdlRuntimeVersion);
 
-        
+
         ENGINE_CORE_INFO("SDL link    version {}", sdlCompileVersion);
         ENGINE_CORE_INFO("SDL runtime version {}", sdlRuntimeVersion);
 
@@ -72,27 +72,7 @@ namespace {
 
 Engine::Application::Application() {
     Engine::Log::Initialize();
-    ENGINE_CORE_TRACE("aaa");
-    ENGINE_CORE_INFO("aaa");
-    ENGINE_CORE_WARNING("aaa");
-    ENGINE_CORE_DEBUG("aaa");
-    ENGINE_CORE_ERROR("aaa");
-    ENGINE_CORE_CRITICAL("aaa");
-    
-    ENGINE_TRACE("aaa");
-    ENGINE_INFO("aaa");
-    ENGINE_WARNING("aaa");
-    ENGINE_DEBUG("aaa");
-    ENGINE_ERROR("aaa");
-    ENGINE_CRITICAL("aaa");
-
-    spdlog::set_level(spdlog::level::trace);
-    spdlog::trace("aaa");
-    spdlog::debug("aaa");
-    spdlog::info("aaa");
-    spdlog::warn("aaa");
-    spdlog::error("aaa");
-    spdlog::critical("aaa");
+    ENGINE_CORE_INFO("Engine::Application()");
 
     printSDL2Info();
 
@@ -111,6 +91,8 @@ Engine::Application::Application() {
 Engine::Application::~Application() {
     SDL_DestroyWindow(mWindow);
     SDL_Quit();
+
+    ENGINE_CORE_INFO("Engine::~Application()");
     Engine::Log::Shutdown();
 }
 

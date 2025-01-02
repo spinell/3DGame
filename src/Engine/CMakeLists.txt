@@ -11,18 +11,22 @@ target_sources(Engine
         Entrypoint.h
 )
 
-target_include_directories(Engine PUBLIC .)
+target_include_directories(Engine
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
 
 target_link_libraries(Engine
+    PUBLIC
+        spdlog::spdlog # spdlog is exposed in Log.h
     PRIVATE
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-        spdlog::spdlog
 )
 
 
 target_compile_options(Engine
     PUBLIC
-        /Zc:preprocessor
+        $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
 )
 
 
