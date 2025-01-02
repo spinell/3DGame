@@ -36,6 +36,7 @@ option(BUILD_DOC     "Build the documentation." OFF)
 find_package(SDL2   2.30.10 EXACT CONFIG REQUIRED)
 find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
 
+add_subdirectory(src/Engine)
 add_subdirectory(src/Game)
 
 install(TARGETS Game)
