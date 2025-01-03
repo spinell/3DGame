@@ -1,35 +1,39 @@
 #pragma once
 
-struct SDL_Window;
+class SDLWindow;
 
-namespace Engine {
+namespace Engine
+{
 
-class Application {
-public:
-    Application();
-    virtual ~Application();
+	class Event;
 
-    Application(const Application&) = delete;
-    Application(Application&&)      = delete;
+	class Application
+	{
+	public:
+		Application();
+		virtual ~Application();
 
-    Application& operator=(const Application&) = delete;
-    Application& operator=(Application&&)      = delete;
+		Application(const Application &) = delete;
+		Application(Application &&) = delete;
 
-    int  run();
-    void close();
+		Application &operator=(const Application &) = delete;
+		Application &operator=(Application &&) = delete;
 
-protected:
-    virtual void onInit() {}
-    virtual void onShutdown() {}
-    virtual void onUpdate() {}
-    virtual void onEvent() {}
+		int run();
+		void close();
 
-private:
-    void processEvent();
+	protected:
+		virtual void onInit() {}
+		virtual void onShutdown() {}
+		virtual void onUpdate() {}
+		virtual void onEvent(const Engine::Event &event);
 
-private:
-    bool        mRunning = true;
-    SDL_Window* mWindow{};
-};
+	private:
+		void processEvent();
+
+	private:
+		bool mRunning = true;
+		SDLWindow *mWindow{};
+	};
 
 } // namespace Engine

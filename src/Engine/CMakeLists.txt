@@ -9,6 +9,18 @@ target_sources(Engine
         Log.cpp
         Log.h
         Entrypoint.h
+        Event/EventSystem.h
+        Event/EventSystem.cpp
+        Event/KeyBoardEvent.h
+        Event/MouseEvent.h
+        Event/WindowEvent.h
+        KeyCode.h
+        Window.h
+        Window.cpp
+        SDLWindow.h
+        SDLWindow.cpp
+        SDL/sdl_mapping.cpp
+        SDL/sdl_mapping.h
 )
 
 target_include_directories(Engine
@@ -28,5 +40,3 @@ target_compile_options(Engine
     PUBLIC
         $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
 )
-
-
