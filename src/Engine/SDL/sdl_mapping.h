@@ -1,5 +1,5 @@
 #pragma once
-#include "Engine/Event/EventSystem.h"
+#include "Engine/Event/Event.h"
 #include "Engine/KeyCode.h"
 
 #include <SDL2/SDL_events.h>

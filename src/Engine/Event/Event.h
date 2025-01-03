@@ -1,7 +1,8 @@
 #pragma once
 #include "Engine/KeyCode.h"
 
-#include <format>
+#include <functional>
+#include <string>
 
 namespace Engine {
 
@@ -35,23 +36,7 @@ enum class EventType {
     MouseButtonReleased,
     MouseButtonDown,
     MouseMoved,
-    MouseScrolled,
-    // Application Event
-    AppTick,
-    AppUpdate,
-    AppRender,
-    // Scene Event
-    ScenePreStart,
-    ScenePostStart,
-    ScenePreStop,
-    ScenePostStop,
-    // Selection Event
-    SelectionChanged,
-    // Editor Event
-    EditorExitPlayMode,
-    // Others
-    AssetReloaded,
-    AnimationGraphCompiled
+    MouseScrolled
 };
 
 #define EVENT_CLASS_TYPE(type)                                                    \
@@ -61,29 +46,31 @@ enum class EventType {
     virtual const char* getName() const override { return #type; }
 
 struct Event {
+    bool Handled = false;
+
     virtual EventType   getEventType() const { return EventType::None; };
     virtual const char* getName() const { return ""; };
     virtual std::string toString() const { return getName(); }
 };
 
-//
-// Drop Event
-//
-class DropBeginEvent : public Event {};
-class DropCompleteEvent : public Event {};
-class DropTextEvent : public Event {};
-class DropFileEvent : public Event {};
+class EventDispatcher {
+    template <typename T>
+    using EventFn = std::function<bool(T&)>;
 
-class EventSystem {
 public:
-    EventSystem();
-    ~EventSystem();
+    EventDispatcher(Event& event) : m_Event(event) {}
 
-    EventSystem(const EventSystem&) = delete;
-    EventSystem(EventSystem&&)      = delete;
+    template <typename T>
+    bool Dispatch(EventFn<T> func) {
+        if (m_Event.getEventType() == T::GetStaticType() && !m_Event.Handled) {
+            m_Event.Handled = func(*(T*)&m_Event);
+            return true;
+        }
+        return false;
+    }
 
-    EventSystem& operator=(const EventSystem&) = delete;
-    EventSystem& operator=(EventSystem&&)      = delete;
+private:
+    Event& m_Event;
 };
 
 }; // namespace Engine

@@ -9,8 +9,8 @@ target_sources(Engine
         Log.cpp
         Log.h
         Entrypoint.h
-        Event/EventSystem.h
-        Event/EventSystem.cpp
+        Event/DropEvent.h
+        Event/Event.h
         Event/KeyBoardEvent.h
         Event/MouseEvent.h
         Event/WindowEvent.h

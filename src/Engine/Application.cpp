@@ -3,7 +3,7 @@
 #include "Log.h"
 #include "SDLWindow.h"
 
-#include "Engine/Event/EventSystem.h"
+#include "Engine/Event/Event.h"
 #include "SDL/sdl_mapping.h"
 
 #include <SDL2/SDL.h>

@@ -1,5 +1,6 @@
 #include "SDLWindow.h"
 
+#include "Engine/Event/DropEvent.h"
 #include "Engine/Event/KeyBoardEvent.h"
 #include "Engine/Event/MouseEvent.h"
 #include "Engine/Event/WindowEvent.h"
@@ -299,6 +300,9 @@ void SDLWindow::processEvent(const SDL_Event& event) {
             }
             break;
         }
+        //
+        // Keyboard event
+        //
         case SDL_KEYUP:
         case SDL_KEYDOWN: {
             const SDL_KeyboardEvent& keyEvent = event.key;
@@ -325,8 +329,9 @@ void SDLWindow::processEvent(const SDL_Event& event) {
             //
             ENGINE_CORE_DEBUG("SDL_TEXTEDITING");
             break;
-        // An SDL_MOUSEMOTION event occurs whenever a user moves the mouse within the
-        // application window or when SDL_WarpMouseInWindow() is called.
+        //
+        // Mouse event
+        //
         case SDL_MOUSEMOTION: {
             const SDL_MouseMotionEvent& motionEvent = event.motion;
             Engine::MouseButtonMask     buttonMask  = fromSDLButtonMask(motionEvent.state);
@@ -353,6 +358,9 @@ void SDLWindow::processEvent(const SDL_Event& event) {
             const int                  y         = isFlipped ? -e.y : e.y;
             mEventCallback(Engine::MouseScrolledEvent(x, y, e.mouseX, e.mouseY));
         } break;
+        //
+        // File drop event
+        //
         case SDL_DROPBEGIN:
             mEventCallback(Engine::DropBeginEvent());
             break;
@@ -360,13 +368,9 @@ void SDLWindow::processEvent(const SDL_Event& event) {
             mEventCallback(Engine::DropCompleteEvent());
             break;
         case SDL_DROPFILE: {
-            // const SDL_DropEvent& dropEvent = event.drop;
-            // std::string filePath = dropEvent.file;
-            // SDL_free(dropEvent.file);
-            // mEventCallback(Engine::DropFileEvent(filePath));
-        } break;
-        case SDL_DROPTEXT:
-            if (mEventCallback) mEventCallback(Engine::DropTextEvent());
-            break;
+            const SDL_DropEvent& dropEvent = event.drop;
+            mEventCallback(Engine::DropFileEvent(dropEvent.file));
+            SDL_free(dropEvent.file);
+        }
     }
 }
