@@ -1,165 +1,160 @@
 #pragma once
 
-namespace Engine
-{
+namespace Engine {
 
-    /** */
-    enum class KeyCode
-    {
-        Unknown,
-        A,
-        B,
-        C,
-        D,
-        E,
-        F,
-        G,
-        H,
-        I,
-        J,
-        K,
-        L,
-        M,
-        N,
-        O,
-        P,
-        Q,
-        R,
-        S,
-        T,
-        U,
-        V,
-        W,
-        X,
-        Y,
-        Z,
+/** */
+enum class KeyCode {
+    Unknown,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
 
-        Key0,
-        Key1,
-        Key2,
-        Key3,
-        Key4,
-        Key5,
-        Key6,
-        Key7,
-        Key8,
-        Key9,
+    Key0,
+    Key1,
+    Key2,
+    Key3,
+    Key4,
+    Key5,
+    Key6,
+    Key7,
+    Key8,
+    Key9,
 
-        Return,
-        Escape,
-        Backspace,
-        Tab,
-        Space,
-        Minus,
-        Equals,
-        LeftBracket,
-        RightBracket,
-        Backslash,
-        Semicolon,
-        Apostrophe,
-        Grave,
-        Comma,
-        Period,
-        Slash,
-        Capslock,
+    Return,
+    Escape,
+    Backspace,
+    Tab,
+    Space,
+    Minus,
+    Equals,
+    LeftBracket,
+    RightBracket,
+    Backslash,
+    Semicolon,
+    Apostrophe,
+    Grave,
+    Comma,
+    Period,
+    Slash,
+    Capslock,
 
-        F1,
-        F2,
-        F3,
-        F4,
-        F5,
-        F6,
-        F7,
-        F8,
-        F9,
-        F10,
-        F11,
-        F12,
-        F13,
-        F14,
-        F15,
-        F16,
-        F17,
-        F18,
-        F19,
-        F20,
-        F21,
-        F22,
-        F23,
-        F24,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    F13,
+    F14,
+    F15,
+    F16,
+    F17,
+    F18,
+    F19,
+    F20,
+    F21,
+    F22,
+    F23,
+    F24,
 
-        Printscreen,
-        Scrolllock,
-        Pause,
-        Insert,
-        Home,
-        PageUp,
-        Delete,
-        End,
-        PageDown,
+    Printscreen,
+    Scrolllock,
+    Pause,
+    Insert,
+    Home,
+    PageUp,
+    Delete,
+    End,
+    PageDown,
 
-        ArrowRight,
-        ArrowLeft,
-        ArrowDown,
-        ArrowUp,
+    ArrowRight,
+    ArrowLeft,
+    ArrowDown,
+    ArrowUp,
 
-        // Keypad
-        KeyPadNumlock,
-        KeyPadDivide,
-        KeyPadMultiply,
-        KeyPadMinus,
-        KeyPadPlus,
-        KeyPadEnter,
-        KeyPad0,
-        KeyPad1,
-        KeyPad2,
-        KeyPad3,
-        KeyPad4,
-        KeyPad5,
-        KeyPad6,
-        KeyPad7,
-        KeyPad8,
-        KeyPad9,
-        KeyPadPeriod,
+    // Keypad
+    KeyPadNumlock,
+    KeyPadDivide,
+    KeyPadMultiply,
+    KeyPadMinus,
+    KeyPadPlus,
+    KeyPadEnter,
+    KeyPad0,
+    KeyPad1,
+    KeyPad2,
+    KeyPad3,
+    KeyPad4,
+    KeyPad5,
+    KeyPad6,
+    KeyPad7,
+    KeyPad8,
+    KeyPad9,
+    KeyPadPeriod,
 
-        Application,
-        VolumeUp,   // Key that allow to raise up the sound
-        VolumeDown, // Key that allow to raise down the sound
-        CtrlLeft,
-        CtrlRight,
-        ShiftLeft,
-        ShiftRight,
-        AltLeft,
-        AltRight, // SDL generate Ctrl-left than Alt-right
-        GuiLeft,
-        GuiRight,
-        AudioNext,
-        AudioPrev,
-        AudioStop,
-        AudioPlay,
-        AudioMute,
-        MediaSelect, // Key that allow to open audio application
-        KeyCodeCount
-    };
+    Application,
+    VolumeUp,   // Key that allow to raise up the sound
+    VolumeDown, // Key that allow to raise down the sound
+    CtrlLeft,
+    CtrlRight,
+    ShiftLeft,
+    ShiftRight,
+    AltLeft,
+    AltRight, // SDL generate Ctrl-left than Alt-right
+    GuiLeft,
+    GuiRight,
+    AudioNext,
+    AudioPrev,
+    AudioStop,
+    AudioPlay,
+    AudioMute,
+    MediaSelect, // Key that allow to open audio application
+    KeyCodeCount
+};
 
-    enum KeyMod
-    {
-        None = 0x0,
-        LeftShift = 0x1,
-        RightShift = 0x2,
-        LeftCtrl = 0x4,
-        RightCtrl = 0x8,
-        LeftAlt = 0x10,
-        RightAlt = 0x20,
-        LeftGUI = 0x40,
-        RightGUI = 0x80
-    };
+enum KeyMod {
+    None       = 0x0,
+    LeftShift  = 0x1,
+    RightShift = 0x2,
+    LeftCtrl   = 0x4,
+    RightCtrl  = 0x8,
+    LeftAlt    = 0x10,
+    RightAlt   = 0x20,
+    LeftGUI    = 0x40,
+    RightGUI   = 0x80
+};
 
-    /** */
-    inline const char *getKeyCodeString(KeyCode pKeyCode)
-    {
-        switch (pKeyCode)
-        {
+/** */
+inline const char* getKeyCodeString(KeyCode pKeyCode) {
+    switch (pKeyCode) {
         case KeyCode::A:
             return "A";
         case KeyCode::B:
@@ -418,60 +413,56 @@ namespace Engine
         case KeyCode::Unknown:
         default:
             return "Unknown";
-        }
     }
+}
 
-    enum class MouseButton
-    {
-        Unknown,
-        Left,
-        Right,
-        Middle,
-        X1,
-        X2,
-        Count,
-    };
+enum class MouseButton {
+    Unknown,
+    Left,
+    Right,
+    Middle,
+    X1,
+    X2,
+    Count,
+};
 
-    enum MouseButtonMask
-    {
-        Left = 1 << 0,
-        Right = 1 << 1,
-        Middle = 1 << 2,
-        X1 = 1 << 3,
-        X2 = 1 << 4,
-    };
+enum MouseButtonMask {
+    Left   = 1 << 0,
+    Right  = 1 << 1,
+    Middle = 1 << 2,
+    X1     = 1 << 3,
+    X2     = 1 << 4,
+};
 
-    enum class GameControllerButton
-    {
-        Unknown,
-        BUTTON_A,
-        BUTTON_B,
-        BUTTON_X,
-        BUTTON_Y,
-        BUTTON_BACK,
-        BUTTON_GUIDE,
-        BUTTON_START,
-        BUTTON_LEFTSTICK,
-        BUTTON_RIGHTSTICK,
-        BUTTON_LEFTSHOULDER,
-        BUTTON_RIGHTSHOULDER,
-        BUTTON_DPAD_UP,
-        BUTTON_DPAD_DOWN,
-        BUTTON_DPAD_LEFT,
-        BUTTON_DPAD_RIGHT,
-        Count
-    };
+enum class GameControllerButton {
+    Unknown,
+    BUTTON_A,
+    BUTTON_B,
+    BUTTON_X,
+    BUTTON_Y,
+    BUTTON_BACK,
+    BUTTON_GUIDE,
+    BUTTON_START,
+    BUTTON_LEFTSTICK,
+    BUTTON_RIGHTSTICK,
+    BUTTON_LEFTSHOULDER,
+    BUTTON_RIGHTSHOULDER,
+    BUTTON_DPAD_UP,
+    BUTTON_DPAD_DOWN,
+    BUTTON_DPAD_LEFT,
+    BUTTON_DPAD_RIGHT,
+    Count
+};
 
-    enum class GameControllerAxis
-    {
-        Unknown,
-        LeftX,
-        LeftY,
-        RightX,
-        RightY,
-        TriggerLeft,
-        TriggerRight,
-        Count
-    };
+enum class GameControllerAxis {
+    Unknown,
+    LeftX,
+    LeftY,
+    RightX,
+    RightY,
+    TriggerLeft,
+    TriggerRight,
+    Count
+};
 
 }; // namespace Engine

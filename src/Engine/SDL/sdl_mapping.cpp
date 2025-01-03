@@ -1,11 +1,8 @@
 #include "Engine/SDL/sdl_mapping.h"
 
-Engine::KeyCode fromSDL(SDL_Scancode key)
-{
-
-    switch (key)
-    {
-        // clang-format off
+Engine::KeyCode fromSDL(SDL_Scancode key) {
+    switch (key) {
+            // clang-format off
         case SDL_SCANCODE_UNKNOWN : return Engine::KeyCode::Unknown;
         case SDL_SCANCODE_A : return Engine::KeyCode::A;
         case SDL_SCANCODE_B : return Engine::KeyCode::B;
@@ -72,38 +69,30 @@ Engine::KeyCode fromSDL(SDL_Scancode key)
         case SDL_SCANCODE_KP_9: return Engine::KeyCode::KeyPad9;
         case SDL_SCANCODE_KP_0: return Engine::KeyCode::KeyPad0;
         case SDL_SCANCODE_KP_PERIOD: return Engine::KeyCode::KeyPadPeriod;
-        // clang-format on
-    default:
-        return Engine::KeyCode::Unknown;
+            // clang-format on
+        default:
+            return Engine::KeyCode::Unknown;
     }
 }
 
 unsigned convert_sdl_key_mod(SDL_Keymod sdlMod) {
     unsigned mod{};
 
-    if ((sdlMod & KMOD_LSHIFT) == KMOD_LSHIFT)
-        mod |= (int)Engine::KeyMod::LeftShift;
+    if ((sdlMod & KMOD_LSHIFT) == KMOD_LSHIFT) mod |= (int)Engine::KeyMod::LeftShift;
 
-    if ((sdlMod & KMOD_RSHIFT) == KMOD_RSHIFT)
-        mod |= (int)Engine::KeyMod::RightShift;
+    if ((sdlMod & KMOD_RSHIFT) == KMOD_RSHIFT) mod |= (int)Engine::KeyMod::RightShift;
 
-    if ((sdlMod & KMOD_LCTRL) == KMOD_LCTRL)
-        mod |= (int)Engine::KeyMod::LeftCtrl;
+    if ((sdlMod & KMOD_LCTRL) == KMOD_LCTRL) mod |= (int)Engine::KeyMod::LeftCtrl;
 
-    if ((sdlMod & KMOD_RCTRL) == KMOD_RCTRL)
-        mod |= (int)Engine::KeyMod::RightCtrl;
+    if ((sdlMod & KMOD_RCTRL) == KMOD_RCTRL) mod |= (int)Engine::KeyMod::RightCtrl;
 
-    if ((sdlMod & KMOD_LALT) == KMOD_LALT)
-        mod |= (int)Engine::KeyMod::LeftAlt;
+    if ((sdlMod & KMOD_LALT) == KMOD_LALT) mod |= (int)Engine::KeyMod::LeftAlt;
 
-    if ((sdlMod & KMOD_RALT) == KMOD_RALT)
-        mod |= (int)Engine::KeyMod::RightAlt;
+    if ((sdlMod & KMOD_RALT) == KMOD_RALT) mod |= (int)Engine::KeyMod::RightAlt;
 
-    if ((sdlMod & KMOD_LGUI) == KMOD_LGUI)
-        mod |= (int)Engine::KeyMod::LeftGUI;
+    if ((sdlMod & KMOD_LGUI) == KMOD_LGUI) mod |= (int)Engine::KeyMod::LeftGUI;
 
-    if ((sdlMod & KMOD_RGUI) == KMOD_RGUI)
-        mod |= (int)Engine::KeyMod::RightGUI;
+    if ((sdlMod & KMOD_RGUI) == KMOD_RGUI) mod |= (int)Engine::KeyMod::RightGUI;
 
     // else if((sdlMod & KMOD_NUM)    == KMOD_NUM)
     //	return spine::KeyMod::None;
@@ -117,17 +106,16 @@ unsigned convert_sdl_key_mod(SDL_Keymod sdlMod) {
     return mod;
 }
 
-Engine::MouseButton fromSDL(Uint32 button)
-{
+Engine::MouseButton fromSDL(Uint32 button) {
     switch (button) {
-        // clang-format off
+            // clang-format off
         case SDL_BUTTON_LEFT:  return Engine::MouseButton::Left;
         case SDL_BUTTON_RIGHT: return Engine::MouseButton::Right;
         case SDL_BUTTON_MIDDLE:return Engine::MouseButton::Middle;
         case SDL_BUTTON_X1:    return Engine::MouseButton::X1;
         case SDL_BUTTON_X2:    return Engine::MouseButton::X2;
         default:               return Engine::MouseButton::Unknown;
-        // clang-format on
+            // clang-format on
     }
 }
 
@@ -152,12 +140,10 @@ Engine::MouseButtonMask fromSDLButtonMask(Uint32 pButtonMask) {
     return mask;
 }
 
-Engine::GameControllerButton fromSDL(SDL_GameControllerButton button)
-{
+Engine::GameControllerButton fromSDL(SDL_GameControllerButton button) {
     return Engine::GameControllerButton::Unknown;
 }
 
-Engine::GameControllerAxis fromSDL(SDL_GameControllerAxis axis)
-{
+Engine::GameControllerAxis fromSDL(SDL_GameControllerAxis axis) {
     return Engine::GameControllerAxis::Unknown;
 }

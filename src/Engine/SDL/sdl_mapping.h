@@ -1,9 +1,10 @@
 #pragma once
-#include "Engine/KeyCode.h"
 #include "Engine/Event/EventSystem.h"
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_gamecontroller.h>
+#include "Engine/KeyCode.h"
+
 #include <SDL2/SDL_events.h>
+#include <SDL2/SDL_gamecontroller.h>
+#include <SDL2/SDL_keycode.h>
 
 /// @brief Convert a SDL scancode into the engine KeyCode,
 Engine::KeyCode fromSDL(SDL_Scancode key);
