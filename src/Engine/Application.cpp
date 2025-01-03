@@ -4,6 +4,8 @@
 #include "SDLWindow.h"
 
 #include "Engine/Event/Event.h"
+#include "Engine/Event/KeyBoardEvent.h"
+#include "Engine/Event/WindowEvent.h"
 #include "SDL/sdl_mapping.h"
 
 #include <SDL2/SDL.h>
@@ -82,7 +84,6 @@ Engine::Application::Application() {
     mWindow->create();
     mWindow->setEventCallback([this](const Engine::Event& e) { onEvent(e); });
 }
-
 Engine::Application::~Application() {
     delete mWindow;
     SDL_Quit();
@@ -107,8 +108,18 @@ void Engine::Application::close() { mRunning = false; }
 void Engine::Application::processEvent() { mWindow->pollEvent(); }
 
 void Engine::Application::onEvent(const Engine::Event& event) {
-    ENGINE_CORE_DEBUG("{}", event.toString());
     if (event.getEventType() == Engine::EventType::WindowClose) {
         mRunning = false;
     }
+    if (event.isInCategory(Engine::EventCategory::EventCategoryWindow)) {
+        ENGINE_CORE_DEBUG("{}", event.toString());
+    }
+
+    // EventDispatcher dispatcher(event);
+    // dispatcher.Dispatch<Engine::KeyPressedEvent>([this](Engine::KeyPressedEvent& e) {
+    //     if (e.GetKeyCode() == Engine::KeyCode::A) {
+    //
+    //     }
+    //     return true;
+    // });
 }

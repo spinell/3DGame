@@ -6,6 +6,8 @@ namespace Engine {
 /// @brief Base class for keybord event.
 class KeyEvent : public Event {
 public:
+    EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
+
     /// @brief Retuirn key that was pressed.
     KeyCode GetKeyCode() const { return mKeyCode; }
 
@@ -57,6 +59,7 @@ private:
 /// @brief Keyboard text input
 class InputTextEvent : public Event {
 public:
+    EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput);
     EVENT_CLASS_TYPE(InputText)
 
     InputTextEvent(const char* text) : mText(text) {}

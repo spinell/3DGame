@@ -4,7 +4,7 @@ class SDLWindow;
 
 namespace Engine {
 
-class Event;
+struct Event;
 
 class Application {
 public:

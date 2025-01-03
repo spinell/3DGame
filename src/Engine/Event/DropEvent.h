@@ -11,11 +11,13 @@ namespace Engine {
 ///        One \p DropFileEvent will be triggered for each file.
 class DropBeginEvent : public Event {
     EVENT_CLASS_TYPE(DropBegin)
+    EVENT_CLASS_CATEGORY(EventCategoryDrop)
 };
 
 /// @brief Event trigerred when all \p DropFileEvent has been received..
 class DropCompleteEvent : public Event {
     EVENT_CLASS_TYPE(DropComplete)
+    EVENT_CLASS_CATEGORY(EventCategoryDrop)
 };
 
 /// @brief Event trigerred for each files / folder the user drop into the window.
@@ -23,6 +25,7 @@ class DropCompleteEvent : public Event {
 class DropFileEvent : public Event {
 public:
     EVENT_CLASS_TYPE(DropFile)
+    EVENT_CLASS_CATEGORY(EventCategoryDrop)
 
     DropFileEvent(std::string path) : mPath{path} {}
 

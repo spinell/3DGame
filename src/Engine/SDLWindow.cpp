@@ -27,6 +27,10 @@ SDLWindow* SDLWindow::GetWindowFromID(Uint32 windowId) {
     return nullptr;
 }
 
+SDL_HitTestResult hitTestCallBack(SDL_Window* win, const SDL_Point* area, void* data) {
+    return SDL_HITTEST_NORMAL;
+}
+
 SDLWindow::SDLWindow() {}
 
 SDLWindow::~SDLWindow() {
@@ -52,6 +56,8 @@ bool SDLWindow::create(const CreateInfo& createInfo) {
         if (msg) {
         }
     }
+
+    SDL_SetWindowHitTest(mWindow, hitTestCallBack, nullptr);
 
     SDL_SetWindowData(mWindow, kWindowUserDataKey, this);
 
@@ -230,74 +236,102 @@ void SDLWindow::processEvent(const SDL_Event& event) {
                     mEventCallback(Engine::WindowHideEvent());
                     break;
                 case SDL_WINDOWEVENT_EXPOSED:
-                    //
-                    // TODO ?????
-                    //
+                    // Window has been exposed and should be redrawn
+                    ENGINE_CORE_DEBUG("SDL_WINDOWEVENT_EXPOSED");
                     break;
                 case SDL_WINDOWEVENT_MOVED:
                     mEventCallback(Engine::WindowMovedEvent(windowEvent.data1, windowEvent.data2));
                     break;
 
-                // window has been resized
-                // this event is always preceded by SDL_WINDOWEVENT_SIZE_CHANGED
                 case SDL_WINDOWEVENT_RESIZED:
+                    // window has been resized
+                    // this event is always preceded by SDL_WINDOWEVENT_SIZE_CHANGED
+
                     // mEventCallback(Engine::WindowResizeEvent(windowEvent.data1,
                     // windowEvent.data2));
                     break;
 
-                // The window size has changed, either as a result of an API call or through the
-                // system or user changing the window size. this event is followed by
-                // SDL_WINDOWEVENT_RESIZED if the size was changed by an external event, i.e. the
-                // user or the window manager
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
+                    // The window size has changed, either as a result of an API call or through the
+                    // system or user changing the window size. this event is followed by
+                    // SDL_WINDOWEVENT_RESIZED if the size was changed by an external event, i.e.
+                    // the user or the window manager
                     mEventCallback(Engine::WindowResizeEvent(windowEvent.data1, windowEvent.data2));
                     break;
-                // Window has been minimized
                 case SDL_WINDOWEVENT_MINIMIZED:
                     mEventCallback(Engine::WindowMinimizedEvent());
                     break;
-                // Window has been maximized
                 case SDL_WINDOWEVENT_MAXIMIZED:
                     mEventCallback(Engine::WindowMaximizedEvent());
                     break;
-                // Window has been restored to normal size and position
                 case SDL_WINDOWEVENT_RESTORED:
                     mEventCallback(Engine::WindowRestoredEvent());
                     break;
-                //  Window has gained mouse focus
                 case SDL_WINDOWEVENT_ENTER:
                     mEventCallback(Engine::WindowMouseEnterEvent());
                     break;
-                // Window has lost mouse focus
                 case SDL_WINDOWEVENT_LEAVE:
                     mEventCallback(Engine::WindowMouseLeaveEvent());
                     break;
-                // Window has gained keyboard focus
                 case SDL_WINDOWEVENT_FOCUS_GAINED:
                     mEventCallback(Engine::WindowFocusGainEvent());
                     break;
-                // Window has lost keyboard focus
                 case SDL_WINDOWEVENT_FOCUS_LOST:
                     mEventCallback(Engine::WindowFocusLostEvent());
                     break;
-                // The window manager requests that the window be closed
                 case SDL_WINDOWEVENT_CLOSE:
                     mEventCallback(Engine::WindowCloseEvent());
                     break;
-                // Window is being offered a focus (should SetWindowInputFocus() on itself or a
-                // subwindow, or ignore)
                 case SDL_WINDOWEVENT_TAKE_FOCUS:
-                    //
-                    // TODO ?????
-                    //
+                    // Window is being offered a focus
+                    // (should SetWindowInputFocus() on itself or a subwindow, or ignore)
+                    // linux only ....
+                    ENGINE_CORE_DEBUG("SDL_WINDOWEVENT_TAKE_FOCUS");
                     break;
-                case SDL_WINDOWEVENT_HIT_TEST: /**< Window had a hit test that wasn't
-                                                  SDL_HITTEST_NORMAL. */
-                    //
-                    // TODO ?????
-                    //
+                case SDL_WINDOWEVENT_HIT_TEST:
+                    // This is only triggered when using SDL_SetWindowHitTest()
+                    // This call back need to return anything except SDL_HITTEST_NORMAL
+                    ENGINE_CORE_DEBUG("SDL_WINDOWEVENT_HIT_TEST");
+                    break;
+                case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                    // The window has been moved to another monitor
+                    mEventCallback(Engine::WindowDisplaydChangeEvent(windowEvent.data1));
+                    break;
+                case SDL_WINDOWEVENT_ICCPROF_CHANGED:
+                    // ICC profile  has change from the system ...
+                    ENGINE_CORE_DEBUG("SDL_WINDOWEVENT_ICCPROF_CHANGED");
                     break;
             }
+            break;
+        }
+
+        //
+        // Event subtype for display events
+        //
+        case SDL_DISPLAYEVENT: {
+            const SDL_DisplayEvent& e = event.display;
+            if (e.event == SDL_DISPLAYEVENT_ORIENTATION) {
+                // SDL_ORIENTATION_UNKNOWN,            /**< The display orientation can't be
+                // determined */ SDL_ORIENTATION_LANDSCAPE,          /**< The display is in
+                // landscape mode, with the right side up, relative to portrait mode */
+                // SDL_ORIENTATION_LANDSCAPE_FLIPPED,  /**< The display is in landscape mode, with
+                // the left side up, relative to portrait mode */ SDL_ORIENTATION_PORTRAIT, /**< The
+                // display is in portrait mode */ SDL_ORIENTATION_PORTRAIT_FLIPPED    /**< The
+                // display is in portrait mode, upside down */
+                ENGINE_CORE_DEBUG("SDL_DISPLAYEVENT {} {}", "ORIENTATION", e.display, e.data1);
+            }
+            if (e.display == SDL_DISPLAYEVENT_CONNECTED) {
+                ENGINE_CORE_DEBUG("SDL_DISPLAYEVENT {} {}", "CONNECTED", e.display);
+            }
+            if (e.display == SDL_DISPLAYEVENT_DISCONNECTED) {
+                ENGINE_CORE_DEBUG("SDL_DISPLAYEVENT {} {}", "DISCONNECTED", e.display);
+            }
+            if (e.display == SDL_DISPLAYEVENT_MOVED) {
+                ENGINE_CORE_DEBUG("SDL_DISPLAYEVENT {} {}", "MOVE", e.display);
+            };
+        }
+        case SDL_LOCALECHANGED: {
+            ENGINE_CORE_DEBUG("SDL_LOCALECHANGED");
             break;
         }
         //
@@ -311,23 +345,38 @@ void SDLWindow::processEvent(const SDL_Event& event) {
             const auto keyMod  = convert_sdl_key_mod((SDL_Keymod)keyEvent.keysym.mod);
 
             if (keyEvent.state == SDL_PRESSED) {
-                Engine::KeyPressedEvent keyPressEvent(keyCode, keyEvent.repeat, keyMod);
-                mEventCallback(keyPressEvent);
+                mEventCallback(Engine::KeyPressedEvent(keyCode, keyEvent.repeat, keyMod));
             } else if (keyEvent.state == SDL_RELEASED) {
-                Engine::KeyReleasedEvent keyReleaseEvent(keyCode, keyMod);
-                mEventCallback(keyReleaseEvent);
+                mEventCallback(Engine::KeyReleasedEvent(keyCode, keyMod));
             }
         } break;
         case SDL_TEXTINPUT: {
             const SDL_TextInputEvent& textEvent = event.text;
-            ENGINE_CORE_DEBUG(textEvent.text);
             mEventCallback(Engine::InputTextEvent((char*)textEvent.text));
         } break;
         case SDL_TEXTEDITING:
             //
             //	TODO ???
             //
-            ENGINE_CORE_DEBUG("SDL_TEXTEDITING");
+        {
+            const SDL_TextEditingEvent& textEvent = event.edit;
+            
+            ENGINE_CORE_DEBUG("SDL_TEXTEDITING {} {} {}", textEvent.start, textEvent.length, textEvent.text);
+        }
+            break;
+        case SDL_TEXTEDITING_EXT:
+            //
+            //	TODO ???
+            //
+            {
+                const SDL_TextEditingExtEvent& textEvent = event.editExt;
+                ENGINE_CORE_DEBUG("SDL_TEXTEDITING_EXT");     
+            }
+
+            break;
+        case SDL_KEYMAPCHANGED:
+            // Triggered when the keyboard layout changed (WM_INPUTLANGCHANGE)
+            ENGINE_CORE_DEBUG("SDL_KEYMAPCHANGED");
             break;
         //
         // Mouse event

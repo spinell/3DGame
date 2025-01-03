@@ -4,6 +4,9 @@
 #include <functional>
 #include <string>
 
+// TODO: Move somewhere else
+#define BIT(x) (1u << x)
+
 namespace Engine {
 
 enum class EventType {
@@ -21,6 +24,7 @@ enum class EventType {
     WindowRestored,
     WindowResize,
     WindowShow,
+    WindowDisplayChanged,
     // WindowTitleBarHitTest,
     //  Drop event
     DropBegin,
@@ -39,18 +43,33 @@ enum class EventType {
     MouseScrolled
 };
 
+enum EventCategory {
+    EventCategoryWindow      = BIT(0),
+    EventCategoryInput       = BIT(1),
+    EventCategoryKeyboard    = BIT(2),
+    EventCategoryMouse       = BIT(3),
+    EventCategoryMouseButton = BIT(4),
+    EventCategoryDrop        = BIT(5)
+};
+
 #define EVENT_CLASS_TYPE(type)                                                    \
     static EventType GetStaticType() { return EventType::type; }                  \
                                                                                   \
     virtual EventType   getEventType() const override { return GetStaticType(); } \
     virtual const char* getName() const override { return #type; }
 
+#define EVENT_CLASS_CATEGORY(category) \
+    virtual int GetCategoryFlags() const override { return category; }
+
 struct Event {
     bool Handled = false;
 
-    virtual EventType   getEventType() const { return EventType::None; };
-    virtual const char* getName() const { return ""; };
+    virtual EventType   getEventType() const     = 0;
+    virtual const char* getName() const          = 0;
+    virtual int         GetCategoryFlags() const = 0;
     virtual std::string toString() const { return getName(); }
+
+    bool isInCategory(EventCategory category) const { return GetCategoryFlags() & category; }
 };
 
 class EventDispatcher {

@@ -11,6 +11,7 @@ namespace Engine {
 class MouseMovedEvent : public Event {
 public:
     EVENT_CLASS_TYPE(MouseMoved)
+    EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
 
     MouseMovedEvent(int x, int y, int relX, int relY, MouseButtonMask buttonMask)
         : mPosX{x}, mPosY{y}, mRelX{relX}, mRelY{relY}, mButtonState{buttonMask} {}
@@ -47,6 +48,7 @@ private:
 class MouseScrolledEvent : public Event {
 public:
     EVENT_CLASS_TYPE(MouseScrolled)
+    EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
 
     MouseScrolledEvent(int x, int y, int mouseX, int mouseY)
         : mDeltaX{x}, mDeltaY{y}, mMouseX{mouseX}, mMouseY{mouseY} {}
@@ -80,6 +82,8 @@ private:
 /// @brief Base class for mouse button event.
 class MouseButtonEvent : public Event {
 public:
+    EVENT_CLASS_CATEGORY(EventCategoryMouse | EventCategoryInput)
+
     /// @brief Return the button related to this event.
     MouseButton getMouseButton() const { return mButton; }
 
