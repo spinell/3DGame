@@ -1,0 +1,36 @@
+---
+# A comment
+Language:                     Cpp
+BasedOnStyle:                 Google
+AccessModifierOffset:         -4      # The extra indent or outdent of access modifiers, e.g. public:.
+AlignConsecutiveAssignments:  true    # This will align the assignment operators of consecutive lines.
+AlignConsecutiveDeclarations: true    # This will align the declaration names of consecutive lines.
+BinPackParameters:            false   # If false, a function declaration’s or function definition’s parameters will either all be on the same line or will have one line each.
+DerivePointerAlignment:       false   # If true, analyze the formatted file for the most common alignment of & and *. Pointer and reference alignment styles are going to be updated according to the preferences found in the file. PointerAlignment is then used only as fallback.
+IncludeBlocks:                Regroup # Merge multiple #include blocks together and sort as one. Then split into groups based on category priority.
+IncludeCategories:
+  - Regex:           '^<ext/.*\.h>'
+    Priority:        20
+    SortPriority:    0
+  - Regex:           '^<.*\.(h|hpp|inl)>'
+    Priority:        10
+    SortPriority:    0
+  - Regex:           '^<.*'
+    Priority:        20
+    SortPriority:    0
+  - Regex:           '.*/' # local header in other folder
+    Priority:        2
+    SortPriority:    0
+  - Regex:           '.*'  # local header in same folder
+    Priority:        1
+    SortPriority:    0
+IncludeIsMainRegex: '(Test)?$'
+IncludeIsMainSourceRegex: ''
+IndentWidth:                  4      # The number of columns to use for indentation.
+SpacesBeforeTrailingComments: 1      # The number of spaces before trailing line comments (// - comments).
+Standard:                    Cpp11
+ColumnLimit:                 100
+InsertNewlineAtEOF: true
+BreakConstructorInitializers: BeforeColon
+CompactNamespaces: true
+...

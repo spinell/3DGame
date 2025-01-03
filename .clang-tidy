@@ -1,0 +1,44 @@
+---
+
+# remove cppcoreguidelines-avoid-magic-numbers
+# remove cppcoreguidelines-pro-type-vararg because of ImGui::Text()
+# remove cppcoreguidelines-macro-to-enum because of FontAwnsome
+# Remove modernize-macro-to-enum because of FontAwnsome
+Checks: readability-*,
+       -readability-implicit-bool-conversion,
+       -readability-identifier-length,
+       -readability-magic-numbers,
+       -readability-avoid-unconditional-preprocessor-if,
+       -readability-function-cognitive-complexity,
+       -readability-convert-member-functions-to-static,
+       -readability-suspicious-call-argument,
+        modernize-*,
+       -modernize-avoid-c-arrays,
+       -modernize-macro-to-enum,
+       -modernize-use-trailing-return-type,
+        cppcoreguidelines-*,
+       -cppcoreguidelines-avoid-magic-numbers,
+       -cppcoreguidelines-avoid-c-arrays,
+       -cppcoreguidelines-pro-type-const-cast,
+       -cppcoreguidelines-pro-type-static-cast-downcast,
+       -cppcoreguidelines-pro-type-union-access,
+       -cppcoreguidelines-non-private-member-variables-in-classes,
+       -cppcoreguidelines-macro-to-enum,
+       -cppcoreguidelines-macro-usage,
+        performance-*,
+        clang-analyzer-*,
+        misc-*,
+       -misc-include-cleaner,
+       -misc-no-recursion,
+       -misc-non-private-member-variables-in-classes,
+        concurrency
+
+FormatStyle: 'file'
+WarningsAsErrors: ""
+#HeaderFilterRegex: '.*'
+
+CheckOptions:
+  - key:    readability-identifier-naming.ClassCase
+    value:  CamelCase
+  - key:    readability-identifier-naming.StructCase
+    value:  CamelCase

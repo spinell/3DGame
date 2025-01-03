@@ -10,25 +10,26 @@ public:
     virtual ~Application();
 
     Application(const Application&) = delete;
-    Application(Application&&) = delete;
+    Application(Application&&)      = delete;
 
     Application& operator=(const Application&) = delete;
-    Application& operator=(Application&&) = delete;
+    Application& operator=(Application&&)      = delete;
 
-	int run();
-	void close();
+    int  run();
+    void close();
 
 protected:
-	virtual void onInit() {}
-	virtual void onShutdown(){}
-	virtual void onUpdate() {}
-	virtual void onEvent(){}
+    virtual void onInit() {}
+    virtual void onShutdown() {}
+    virtual void onUpdate() {}
+    virtual void onEvent() {}
 
 private:
-	void processEvent();
+    void processEvent();
+
 private:
-	bool mRunning = true;
-	SDL_Window* mWindow{};
+    bool        mRunning = true;
+    SDL_Window* mWindow{};
 };
 
-}
+} // namespace Engine

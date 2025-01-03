@@ -1,21 +1,22 @@
 #include "Log.h"
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
 #include <cassert>
 
 namespace {
-    std::shared_ptr<spdlog::logger> sCoreLogger;
-    std::shared_ptr<spdlog::logger> sClientLogger;
-}
-
+std::shared_ptr<spdlog::logger> sCoreLogger;
+std::shared_ptr<spdlog::logger> sClientLogger;
+} // namespace
 
 /// TODO: [Logging] Write log file next the the executable.
 /// TODO: [Logging] Support enabling custom log level from spdlog config.
-/// TODO: [Logging] Only create std::stdout_color_sink_mt if there is a console (Windows /Subsystem:CONSOLE vs Subsystem:WINDOWS)
+/// TODO: [Logging] Only create std::stdout_color_sink_mt if there is a console (Windows
+/// /Subsystem:CONSOLE vs Subsystem:WINDOWS)
 void Engine::Log::Initialize() {
-    
     // Core logger
     {
         sCoreLogger = std::make_shared<spdlog::logger>("Engine");
@@ -28,12 +29,11 @@ void Engine::Log::Initialize() {
         sCoreLogger->sinks().push_back(coreConsoleSink);
 
 #ifdef _WIN32
-        auto coreMSVCSink    = std::make_shared<spdlog::sinks::msvc_sink_mt>(true);
+        auto coreMSVCSink = std::make_shared<spdlog::sinks::msvc_sink_mt>(true);
         coreMSVCSink->set_level(spdlog::level::err);
         sCoreLogger->sinks().push_back(coreMSVCSink);
 #endif
-}
-
+    }
 
     // Client logger
     {
@@ -47,7 +47,7 @@ void Engine::Log::Initialize() {
         sClientLogger->sinks().push_back(clientConsoleSink);
 
 #ifdef _WIN32
-        auto clientMSVCSink    = std::make_shared<spdlog::sinks::msvc_sink_mt>(true);
+        auto clientMSVCSink = std::make_shared<spdlog::sinks::msvc_sink_mt>(true);
         clientMSVCSink->set_level(spdlog::level::err);
         sClientLogger->sinks().push_back(clientMSVCSink);
 #endif
