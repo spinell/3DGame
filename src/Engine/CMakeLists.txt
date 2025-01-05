@@ -8,7 +8,14 @@ target_sources(Engine
         Assert_.h
         Log.cpp
         Log.h
+        Event.h
+        KeyCode.h
+        KeyCode.cpp
         Entrypoint.h
+        Platform/GLFW/GLFWWindows.cpp
+        Platform/GLFW/GLFWWindows.h
+        Platform/GLFW/GLFWHelper.cpp
+        Platform/GLFW/GLFWHelper.h
 )
 
 target_include_directories(Engine
@@ -19,6 +26,7 @@ target_include_directories(Engine
 target_link_libraries(Engine
     PUBLIC
         spdlog::spdlog # spdlog is exposed in Log.h
+        glfw
     PRIVATE
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
@@ -28,5 +36,3 @@ target_compile_options(Engine
     PUBLIC
         $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
 )
-
-

@@ -2,103 +2,70 @@
 
 #include "Log.h"
 
-#include <SDL2/SDL.h>
+#include "Engine/Platform/GLFW/GLFWWindows.h"
+
 #include <spdlog/spdlog.h>
 
-template <>
-struct std::formatter<SDL_version> {
-    template <class ParseContext>
-    constexpr ParseContext::iterator parse(ParseContext& ctx) {
-        return ctx.begin();
-    }
+namespace Engine {
 
-    template <class FmtContext>
-    FmtContext::iterator format(const SDL_version& sdlVersion, FmtContext& ctx) const {
-        return std::format_to(ctx.out(), "{}.{}.{}", sdlVersion.major, sdlVersion.minor,
-                              sdlVersion.patch);
-    }
-};
-
-namespace {
-void printSDL2Info() {
-    SDL_version sdlRuntimeVersion{};
-    SDL_version sdlCompileVersion{};
-    SDL_VERSION(&sdlCompileVersion);
-    SDL_GetVersion(&sdlRuntimeVersion);
-
-    ENGINE_CORE_INFO("SDL link    version {}", sdlCompileVersion);
-    ENGINE_CORE_INFO("SDL runtime version {}", sdlRuntimeVersion);
-
-    ENGINE_CORE_INFO("SDL has found {} audio driver.", SDL_GetNumAudioDrivers());
-    for (int i = 0; i < SDL_GetNumAudioDrivers(); i++) {
-        ENGINE_CORE_INFO(" - {}", SDL_GetAudioDriver(i));
-    }
-
-    ENGINE_CORE_INFO("SDL has found {} video driver.", SDL_GetNumVideoDrivers());
-    for (int i = 0; i < SDL_GetNumVideoDrivers(); i++) {
-        ENGINE_CORE_INFO(" - {}", SDL_GetVideoDriver(i));
-    }
-
-#ifdef SDL_AUDIO_DRIVER_SNDIO
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_SNDIO {}", SDL_AUDIO_DRIVER_SNDIO);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_SNDIO_DYNAMIC  {}", SDL_AUDIO_DRIVER_SNDIO_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_ALSA
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_ALSA {}", SDL_AUDIO_DRIVER_ALSA);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_ALSA_DYNAMIC {}", SDL_AUDIO_DRIVER_ALSA_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_NAS
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_NAS {}", SDL_AUDIO_DRIVER_NAS);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_NAS_DYNAMIC {}", SDL_AUDIO_DRIVER_NAS_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_PULSEAUDIO
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PULSEAUDIO {}", SDL_AUDIO_DRIVER_PULSEAUDIO);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC {}", SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_PIPEWIRE
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PIPEWIRE {}", SDL_AUDIO_DRIVER_PIPEWIRE);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC {}", SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_JACK
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_JACK {}", SDL_AUDIO_DRIVER_JACK);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_JACK_DYNAMIC {}", SDL_AUDIO_DRIVER_JACK_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_DISK
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_DISK {}", SDL_AUDIO_DRIVER_DISK);
-    // ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_DISK_DYNAMIC {}",  SDL_AUDIO_DRIVER_DISK_DYNAMIC);
-#endif
-}
-} // namespace
-
-Engine::Application::Application() {
+Application::Application() {
     Engine::Log::Initialize();
     ENGINE_CORE_INFO("Engine::Application()");
 
-    printSDL2Info();
+    WindowCreateInfo windowCreateInfo{};
+    windowCreateInfo.fullscreen = false;
+    mWindows                    = new Engine::GLFWWindows(windowCreateInfo);
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-        ENGINE_CORE_CRITICAL("Failed to initialize SDL2 : {}", SDL_GetError());
-        return;
-    }
+    mWindows->onClosed  = [this](const Engine::WindowCloseEvent& event) { mRunning = false; };
+    mWindows->onResized = [](const Engine::WindowResizeEvent& event) {
+        ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onMoved = [](const Engine::WindowMovedEvent& event) {
+        ENGINE_CORE_DEBUG(event.toString());
+    };
+    //mWindows->onMinimazed  = []() { ENGINE_CORE_DEBUG("onMinimazed"); };
+    //mWindows->onMaximazed  = []() { ENGINE_CORE_DEBUG("onMaximazed"); };
+    //mWindows->onRestored   = []() { ENGINE_CORE_DEBUG("onRestored"); };
+    //mWindows->onFocusGain  = []() { ENGINE_CORE_DEBUG("onFocusGain"); };
+    //mWindows->onFocusLost  = []() { ENGINE_CORE_DEBUG("onFocusLost"); };
 
-    mWindow = SDL_CreateWindow("Hello World!", 100, 100, 620, 387, SDL_WINDOW_SHOWN);
-    if (mWindow == NULL) {
-        ENGINE_CORE_CRITICAL("SDL2 failedto create the windows : {}", SDL_GetError());
-        return;
-    }
+    mWindows->onMousePress = [](const Engine::MousePressEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onMouseRelease = [](const Engine::MouseReleaseEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onMouseMoved = [](const Engine::MouseMovedEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onMouseScrolled = [](const Engine::MouseScrolledEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onMouseEnterOrLeave = [](const Engine::MouseEnterOrLeaveEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+
+    mWindows->onKeyPressed = [this](const Engine::KeyPressedEvent& event) {
+        if (event.getKey() == GLFW_KEY_ESCAPE) {
+            mRunning = false;
+        }
+
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
+    mWindows->onKeyReleased = [](const Engine::KeyReleaseEvent& event) {
+        // ENGINE_CORE_DEBUG(event.toString());
+    };
 }
 
-Engine::Application::~Application() {
-    SDL_DestroyWindow(mWindow);
-    SDL_Quit();
-
+Application::~Application() {
     ENGINE_CORE_INFO("Engine::~Application()");
+    delete mWindows;
     Engine::Log::Shutdown();
 }
 
-int Engine::Application::run() {
+int Application::run() {
     onInit();
-
+    glfwMakeContextCurrent(mWindows->getGLFWwindow());
     while (mRunning) {
         processEvent();
     }
@@ -107,35 +74,8 @@ int Engine::Application::run() {
     return 0;
 }
 
-void Engine::Application::close() { mRunning = false; }
+void Application::close() { mRunning = false; }
 
-void Engine::Application::processEvent() {
-    SDL_Event event;
+void Application::processEvent() { glfwPollEvents(); }
 
-    // Events management
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                mRunning = false;
-                break;
-            case SDL_KEYDOWN:
-                // keyboard API for key pressed
-                switch (event.key.keysym.scancode) {
-                    case SDL_SCANCODE_W:
-                    case SDL_SCANCODE_UP:
-                        break;
-                    case SDL_SCANCODE_A:
-                    case SDL_SCANCODE_LEFT:
-                        break;
-                    case SDL_SCANCODE_S:
-                    case SDL_SCANCODE_DOWN:
-                        break;
-                    case SDL_SCANCODE_D:
-                    case SDL_SCANCODE_RIGHT:
-                        break;
-                    default:
-                        break;
-                }
-        }
-    }
-}
+} // namespace Engine

@@ -1,6 +1,5 @@
 #pragma once
-
-struct SDL_Window;
+#include <Engine/Platform/GLFW/GLFWWindows.h>
 
 namespace Engine {
 
@@ -28,8 +27,8 @@ private:
     void processEvent();
 
 private:
-    bool        mRunning = true;
-    SDL_Window* mWindow{};
+    bool         mRunning = true;
+    GLFWWindows* mWindows{};
 };
 
 } // namespace Engine
