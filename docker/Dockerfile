@@ -54,7 +54,8 @@ RUN apt-get -y --no-install-recommends install \
     libxft-dev \
     libwayland-dev \
     libxkbcommon-dev \
-    libegl1-mesa-dev && \
+    libegl1-mesa-dev \
+    libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config && \
     apt clean
 
 # Create the user

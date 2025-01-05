@@ -1,4 +1,3 @@
-#pragma once
 #include <Engine/Platform/GLFW/GLFWHelper.h>
 
 namespace Engine {
