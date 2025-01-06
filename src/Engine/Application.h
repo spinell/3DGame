@@ -1,5 +1,12 @@
 #pragma once
-#include <Engine/Platform/GLFW/GLFWWindows.h>
+
+#define USE_SDL 1
+
+#if USE_SDL == 1
+#include "Engine/Platform/SDL2/SDLWindow.h"
+#else
+#include "Engine/Platform/GLFW/GLFWWindows.h"
+#endif
 
 namespace Engine {
 
@@ -27,8 +34,12 @@ private:
     void processEvent();
 
 private:
-    bool         mRunning = true;
+    bool mRunning = true;
+#if USE_SDL == 1
+    SDLWindow* mWindows{};
+#else
     GLFWWindows* mWindows{};
+#endif
 };
 
 } // namespace Engine

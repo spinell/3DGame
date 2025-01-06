@@ -16,6 +16,12 @@ target_sources(Engine
         Platform/GLFW/GLFWWindows.h
         Platform/GLFW/GLFWHelper.cpp
         Platform/GLFW/GLFWHelper.h
+        Platform/SDL2/SDLWindow.cpp
+        Platform/SDL2/SDLWindow.h
+        Platform/SDL2/SDLHelper.cpp
+        Platform/SDL2/SDLHelper.h
+
+
 )
 
 target_include_directories(Engine

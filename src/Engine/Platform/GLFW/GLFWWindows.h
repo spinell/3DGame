@@ -40,6 +40,7 @@ public:
     std::function<void(char c)>                               onTextChar;
 
     GLFWwindow* getGLFWwindow() const { return mWindow; }
+
 private:
     void        registerWindowEventCallback();
     void        registerKeyboardEventCallback();

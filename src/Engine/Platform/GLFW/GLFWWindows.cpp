@@ -33,7 +33,7 @@ GLFWWindows::GLFWWindows(const WindowCreateInfo& createInfo) {
 
     ENGINE_INFO("Creating window {0} ({1}, {2})", createInfo.title, createInfo.width,
                 createInfo.height);
-    
+
     // disable opengl context creation
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
@@ -148,9 +148,10 @@ void GLFWWindows::registerKeyboardEventCallback() {
                 if (win->onKeyPressed)
                     win->onKeyPressed(
                         Engine::KeyPressedEvent(key, scancode, false /*isRepeat*/, keyModFlag));
-                const auto name = glfwGetKeyName(key, scancode);
+                const auto name  = glfwGetKeyName(key, scancode);
                 const auto name2 = glfwGetKeyName(GLFW_KEY_UNKNOWN, scancode);
-                ENGINE_CORE_INFO("{} {} {} {}", key, name ? name : "No name", scancode, name2 ? name2 : "No name");
+                ENGINE_CORE_INFO("{} {} {} {}", key, name ? name : "No name", scancode,
+                                 name2 ? name2 : "No name");
                 break;
             }
             case GLFW_REPEAT: {
