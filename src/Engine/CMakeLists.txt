@@ -9,6 +9,20 @@ target_sources(Engine
         Log.cpp
         Log.h
         Entrypoint.h
+        KeyCode.cpp
+        KeyCode.h
+        Event.h
+        Layer.h
+        LayerStack.h
+        LayerStack.cpp
+        ImGuiLayer.h
+        ImGuiLayer.cpp
+        Input.h
+        Input.cpp
+        SDL3/SDL3Window.h
+        SDL3/SDL3Window.cpp
+        SDL3/SDL3Helper.h
+        SDL3/SDL3Helper.cpp
 )
 
 target_include_directories(Engine
@@ -20,7 +34,10 @@ target_link_libraries(Engine
     PUBLIC
         spdlog::spdlog # spdlog is exposed in Log.h
     PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+        #$<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+        SDL3::SDL3
+        imgui::imgui
+        OpenGL::GL
 )
 
 
@@ -28,5 +45,3 @@ target_compile_options(Engine
     PUBLIC
         $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
 )
-
-

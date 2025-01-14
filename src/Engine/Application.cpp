@@ -2,32 +2,24 @@
 
 #include "Log.h"
 
-#include <SDL2/SDL.h>
-#include <spdlog/spdlog.h>
-
-template <>
-struct std::formatter<SDL_version> {
-    template <class ParseContext>
-    constexpr ParseContext::iterator parse(ParseContext& ctx) {
-        return ctx.begin();
-    }
-
-    template <class FmtContext>
-    FmtContext::iterator format(const SDL_version& sdlVersion, FmtContext& ctx) const {
-        return std::format_to(ctx.out(), "{}.{}.{}", sdlVersion.major, sdlVersion.minor,
-                              sdlVersion.patch);
-    }
-};
+#include <Engine/Event.h>
+#include <Engine/ImGuiLayer.h>
+#include <Engine/Input.h>
+#include <Engine/KeyCode.h>
+#include <Engine/SDL3/SDL3Helper.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
+#include <imgui.h>
 
 namespace {
 void printSDL2Info() {
-    SDL_version sdlRuntimeVersion{};
-    SDL_version sdlCompileVersion{};
-    SDL_VERSION(&sdlCompileVersion);
-    SDL_GetVersion(&sdlRuntimeVersion);
+    const int compiled = SDL_VERSION;      // hardcoded number from SDL headers
+    const int linked   = SDL_GetVersion(); // reported by linked SDL library
 
-    ENGINE_CORE_INFO("SDL link    version {}", sdlCompileVersion);
-    ENGINE_CORE_INFO("SDL runtime version {}", sdlRuntimeVersion);
+    ENGINE_CORE_INFO("SDL compiled version: {}.{}.{}.", SDL_VERSIONNUM_MAJOR(compiled),
+                     SDL_VERSIONNUM_MINOR(compiled), SDL_VERSIONNUM_MICRO(compiled));
+    ENGINE_CORE_INFO("SDL runtime version : {}.{}.{}.", SDL_VERSIONNUM_MAJOR(linked),
+                     SDL_VERSIONNUM_MINOR(linked), SDL_VERSIONNUM_MICRO(linked));
 
     ENGINE_CORE_INFO("SDL has found {} audio driver.", SDL_GetNumAudioDrivers());
     for (int i = 0; i < SDL_GetNumAudioDrivers(); i++) {
@@ -39,103 +31,155 @@ void printSDL2Info() {
         ENGINE_CORE_INFO(" - {}", SDL_GetVideoDriver(i));
     }
 
-#ifdef SDL_AUDIO_DRIVER_SNDIO
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_SNDIO {}", SDL_AUDIO_DRIVER_SNDIO);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_SNDIO_DYNAMIC  {}", SDL_AUDIO_DRIVER_SNDIO_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_ALSA
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_ALSA {}", SDL_AUDIO_DRIVER_ALSA);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_ALSA_DYNAMIC {}", SDL_AUDIO_DRIVER_ALSA_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_NAS
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_NAS {}", SDL_AUDIO_DRIVER_NAS);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_NAS_DYNAMIC {}", SDL_AUDIO_DRIVER_NAS_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_PULSEAUDIO
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PULSEAUDIO {}", SDL_AUDIO_DRIVER_PULSEAUDIO);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC {}", SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_PIPEWIRE
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PIPEWIRE {}", SDL_AUDIO_DRIVER_PIPEWIRE);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC {}", SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_JACK
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_JACK {}", SDL_AUDIO_DRIVER_JACK);
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_JACK_DYNAMIC {}", SDL_AUDIO_DRIVER_JACK_DYNAMIC);
-#endif
-#ifdef SDL_AUDIO_DRIVER_DISK
-    ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_DISK {}", SDL_AUDIO_DRIVER_DISK);
-    // ENGINE_CORE_INFO("SDL_AUDIO_DRIVER_DISK_DYNAMIC {}",  SDL_AUDIO_DRIVER_DISK_DYNAMIC);
-#endif
+    ENGINE_CORE_INFO("SDL has found {} renderer driver.", SDL_GetNumRenderDrivers());
+    for (int i = 0; i < SDL_GetNumRenderDrivers(); i++) {
+        ENGINE_CORE_INFO(" - {}", SDL_GetRenderDriver(i));
+    }
+
+    ENGINE_CORE_INFO("SDL has found {} GPPU driver.", SDL_GetNumGPUDrivers());
+    for (int i = 0; i < SDL_GetNumGPUDrivers(); i++) {
+        ENGINE_CORE_INFO(" - {}", SDL_GetGPUDriver(i));
+    }
 }
 } // namespace
 
+Engine::Application* Engine::Application::sInstance = nullptr;
+
 Engine::Application::Application() {
+    assert(!sInstance && "Only one instance allowd !");
+    sInstance = this;
+
     Engine::Log::Initialize();
     ENGINE_CORE_INFO("Engine::Application()");
 
     printSDL2Info();
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC |
+                  SDL_INIT_GAMEPAD)) {
         ENGINE_CORE_CRITICAL("Failed to initialize SDL2 : {}", SDL_GetError());
         return;
     }
 
-    mWindow = SDL_CreateWindow("Hello World!", 100, 100, 620, 387, SDL_WINDOW_SHOWN);
-    if (mWindow == NULL) {
-        ENGINE_CORE_CRITICAL("SDL2 failedto create the windows : {}", SDL_GetError());
-        return;
-    }
+    mWindow     = new SDL3Window();
+    mImGuiLayer = new ImGuiLayer();
+    pushOverlay(mImGuiLayer);
 }
 
 Engine::Application::~Application() {
-    SDL_DestroyWindow(mWindow);
+    delete mWindow;
     SDL_Quit();
 
     ENGINE_CORE_INFO("Engine::~Application()");
     Engine::Log::Shutdown();
 }
 
+void Engine::Application::pushLayer(Layer* layer) {
+    mLayerStack.pushLayer(layer);
+    layer->onAttach();
+}
+
+void Engine::Application::pushOverlay(Layer* overlay) {
+    mLayerStack.pushOverlay(overlay);
+    overlay->onAttach();
+}
+
+void Engine::Application::popLayer(Layer* layer) {
+    mLayerStack.popLayer(layer);
+    layer->onDetach();
+}
+
+void Engine::Application::popOverlay(Layer* overlay) {
+    mLayerStack.popOverlay(overlay);
+    overlay->onDetach();
+}
+
 int Engine::Application::run() {
     onInit();
 
+    auto frameStart = std::chrono::high_resolution_clock::now();
     while (mRunning) {
+        // compute delta time since last frame
+        auto   frameEnd      = std::chrono::high_resolution_clock::now();
+        double frameDuration = std::chrono::duration<double>(frameEnd - frameStart).count();
+        frameStart           = frameEnd;
+
+        // update input state and process event
+        Engine::Input::Update();
         processEvent();
+
+        // Update each layer
+        for (Layer* layer : mLayerStack) {
+            layer->onUpdate(frameDuration);
+        }
+
+        // Update Imgui
+        mImGuiLayer->begin();
+        for (Layer* layer : mLayerStack) {
+            layer->onImGuiRender();
+        }
+        mImGuiLayer->end();
+
+        // TODO: Remove this when vulkan renderer is ready
+        SDL_GL_SwapWindow(mWindow->getSDLWindow());
     }
 
     onShutdown();
+
     return 0;
 }
 
 void Engine::Application::close() { mRunning = false; }
+
+void Engine::Application::onEvent(const Event& event) {
+    Engine::Input::OnEvent(event);
+
+    // if Imgui use the keyboard or the mouse, don't propagate event to layers
+    if (ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard) {
+        return;
+    }
+
+    for (auto it = mLayerStack.rbegin(); it != mLayerStack.rend(); ++it) {
+        if ((*it)->onEvent(event)) {
+            // The layer has handle the event,
+            // stop dispaching the event to other layers.
+            break;
+        }
+    }
+}
 
 void Engine::Application::processEvent() {
     SDL_Event event;
 
     // Events management
     while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                mRunning = false;
-                break;
-            case SDL_KEYDOWN:
-                // keyboard API for key pressed
-                switch (event.key.keysym.scancode) {
-                    case SDL_SCANCODE_W:
-                    case SDL_SCANCODE_UP:
-                        break;
-                    case SDL_SCANCODE_A:
-                    case SDL_SCANCODE_LEFT:
-                        break;
-                    case SDL_SCANCODE_S:
-                    case SDL_SCANCODE_DOWN:
-                        break;
-                    case SDL_SCANCODE_D:
-                    case SDL_SCANCODE_RIGHT:
-                        break;
-                    default:
-                        break;
-                }
+        if (event.type == SDL_EVENT_QUIT) {
+            mRunning = false;
+        }
+        //
+        // Window
+        //
+        if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST) {
+            std::optional<Event> e = SDL3Helper::ConvertEvent(event.window);
+            if (e.has_value()) {
+                onEvent(e.value());
+            }
+        }
+        //
+        // Keyboard
+        //
+        else if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) {
+            onEvent(SDL3Helper::ConvertEvent(event.key));
+        }
+        //
+        // Mouse event
+        //
+        else if (event.type == SDL_EVENT_MOUSE_MOTION) {
+            onEvent(SDL3Helper::ConvertEvent(event.motion));
+        } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+                   event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            onEvent(SDL3Helper::ConvertEvent(event.button));
+        } else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+            onEvent(SDL3Helper::ConvertEvent(event.wheel));
         }
     }
 }

@@ -33,8 +33,11 @@ option(BUILD_DOC     "Build the documentation." OFF)
 #
 # Find dependencies
 #
-find_package(SDL2   2.30.10 EXACT CONFIG REQUIRED)
+find_package(SDL3   3.1.6   EXACT CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
+
 find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 add_subdirectory(src/Engine)
 add_subdirectory(src/Game)

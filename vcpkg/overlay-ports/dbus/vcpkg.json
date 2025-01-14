@@ -1,0 +1,5 @@
+{
+    "name": "dbus",
+    "version": "1.0.0",
+    "description": "Lib dbus from system."
+}
