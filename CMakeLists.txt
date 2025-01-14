@@ -40,6 +40,7 @@ find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 
 add_subdirectory(src/Engine)
+add_subdirectory(src/Editor)
 add_subdirectory(src/Game)
 
 install(TARGETS Game)
