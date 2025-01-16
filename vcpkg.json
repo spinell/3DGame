@@ -20,7 +20,7 @@
     },
     {
       "name": "imgui",
-      "features": ["docking-experimental", "opengl3-binding", "sdl3-binding", "sdl3-renderer-binding"],
+      "features": ["docking-experimental", "opengl3-binding", "sdl3-binding", "sdl3-renderer-binding", "wchar32"],
       "version>=": "1.91.5"
     }
 

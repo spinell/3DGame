@@ -1,4 +1,5 @@
 #pragma once
+#include "Panels/PanelManager.h"
 
 #include <Engine/Event.h>
 #include <Engine/Layer.h>
@@ -18,4 +19,10 @@ public:
     void onImGuiRender() override;
 
     bool onEvent(const Engine::Event& event) override;
+
+private:
+    void setImGuiTheme(int);
+    void drawMainMenu();
+
+    PanelManager mPanelManager{};
 };
