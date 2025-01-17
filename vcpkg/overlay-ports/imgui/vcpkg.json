@@ -1,7 +1,7 @@
 {
   "name": "imgui",
-  "version": "1.91.5",
-  "description": "Bloat-free Immediate Mode Graphical User interface for C++ with minimal dependencies.",
+  "version": "1.91.7",
+  "description": "Custom to support SDL3.",
   "homepage": "https://github.com/ocornut/imgui",
   "license": "MIT",
   "dependencies": [
