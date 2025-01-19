@@ -45,3 +45,9 @@ target_compile_options(Engine
     PUBLIC
         $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
 )
+
+###############################################################
+#		Group sources for IDI like Visual Studio
+###############################################################
+get_target_property(Engine_SOURCES Engine SOURCES)
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${Engine_SOURCES})
