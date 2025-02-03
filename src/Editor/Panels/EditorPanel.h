@@ -7,7 +7,7 @@ class EditorPanel {
 public:
     EditorPanel() = default;
 
-    ~EditorPanel() = default;
+    virtual ~EditorPanel() = default;
 
     EditorPanel(const EditorPanel&)            = delete;
     EditorPanel(EditorPanel&&)                 = delete;
