@@ -62,7 +62,7 @@ void EditorLayer::onAttach() {
     mPanelManager.addPanel<InspectorPanel>("Inspector");
 
     Engine::Log::getCoreLogger()->sinks().push_back(
-        std::make_shared<spdlog::sinks::callback_sink_mt>([&logPanel = logPanel](
+        std::make_shared<spdlog::sinks::callback_sink_mt>([logPanel](
                                                               const spdlog::details::log_msg& msg) {
             auto getMessageLevel = [](const spdlog::level::level_enum level) -> LogPanel::LogLevel {
                 switch (level) {
