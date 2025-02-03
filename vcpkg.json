@@ -22,8 +22,11 @@
       "name": "imgui",
       "features": ["docking-experimental", "opengl3-binding", "sdl3-binding", "sdl3-renderer-binding", "wchar32"],
       "version>=": "1.91.5"
-    }
-
+    },
+    "vulkan-memory-allocator"
+  ],
+  "overrides": [
+    { "name": "vulkan-memory-allocator", "version": "3.1.0" }
   ],
   "features": {
     "tests": {

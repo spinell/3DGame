@@ -6,26 +6,23 @@
 #include <Engine/Layer.h>
 #include <Engine/Log.h>
 #include <imgui.h>
+#include "vulkan/VulkanContext.h"
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 
 TestLayer1::~TestLayer1() {}
 
-void TestLayer1::onAttach() {}
+void TestLayer1::onAttach() {
+    VulkanContext::Initialize();
+}
 
-void TestLayer1::onDetach() {}
+void TestLayer1::onDetach() {
+    VulkanContext::Shutdown();
+}
 
 void TestLayer1::onUpdate(float timeStep) {}
 
-void TestLayer1::onImGuiRender() {
-    bool show_demo_window{true};
-    ImGui::ShowDemoWindow(&show_demo_window);
-
-    if (ImGui::Begin("Test")) {
-        ImGui::Text("Hello !");
-    }
-    ImGui::End();
-}
+void TestLayer1::onImGuiRender() {}
 
 bool TestLayer1::onEvent(const Engine::Event& event) {
     event.dispatch<Engine::KeyEvent>([](const Engine::KeyEvent& e) {
