@@ -1,5 +1,3 @@
-#pragma once
-
 #include "EditorLayer.h"
 
 #include "imgui_impl_opengl3.h"

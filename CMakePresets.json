@@ -1,51 +1,175 @@
 {
-    "version": 6,
+    "$schema": "https://cmake.org/cmake/help/latest/_downloads/3e2d73bff478d88a7de0de736ba5e361/schema.json",
+    "version": 8,
     "cmakeMinimumRequired": {
-      "major": 3,
-      "minor": 28,
-      "patch": 0
+        "major": 3,
+        "minor": 28,
+        "patch": 0
     },
     "configurePresets": [
         {
             "name": "vcpkg",
             "hidden": true,
             "cacheVariables": {
-              "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
+                "VCPKG_TRACE_FIND_PACKAGE": false,
+                "VCPKG_MANIFEST_INSTALL": true
+            }
+        },
+        {
+            "name": "dev-mode",
+            "hidden": true,
+            "cacheVariables": {
+                "VCPKG_MANIFEST_FEATURES": "tests"
+            }
+        },
+        {
+            "name": "msvc",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "msvc-clang-cl",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "msvc-clang",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
             }
         },
         {
             "name": "gcc14",
             "hidden": true,
             "environment": {
-              "CC": "gcc-14",
-              "CXX": "g++-14"
+                "CMAKE_C_COMPILER": "gcc-14",
+                "CMAKE_CXX_COMPILER": "g++-14"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
             }
         },
         {
-            "name": "ninja",
-            "displayName": "Ninja",
-            "description": "Default build using Ninja generator",
-            "generator": "Ninja"
+            "name": "base",
+            "inherits": [ "vcpkg" ],
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir":  "${sourceDir}/build/${presetName}/build",
+            "installDir": "${sourceDir}/build/${presetName}/install",
+            "cacheVariables": {
+                "VCPKG_INSTALLED_DIR" : "${sourceDir}/build"
+            }
         },
         {
-            "name": "ninja-multi",
-            "displayName": "Ninja Multi-Config",
-            "description": "Default build using Ninja Multi-Config generator",
-            "generator": "Ninja Multi-Config"
-        },
-        {
-            "name": "dev-mode",
+            "name": "debug",
+            "inherits": [ "base" ],
             "hidden": true,
             "cacheVariables": {
-              "VCPKG_MANIFEST_FEATURES": "tests"
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
-            "name": "ci-vs2022",
+            "name": "release",
+            "inherits": [ "base" ],
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "relwithdebinfo",
+            "inherits": [ "base" ],
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "msvc-debug",
+            "displayName": "msvc Debug",
+            "description": "Build with MSVC in Debug.",
+            "inherits": [ "msvc", "debug", "dev-mode" ]
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "msvc Release",
+            "description": "Build with MSVC in Release.",
+            "inherits": [ "msvc", "release", "dev-mode" ]
+        },
+        {
+            "name": "msvc-relwithdebinfo",
+            "displayName": "msvc RelWithDebInfo",
+            "description": "Build with MSVC in RelWithDebInfo.",
+            "inherits": [ "msvc", "relwithdebinfo", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-debug",
+            "displayName": "MSVC Clang Debug",
+            "description": "Build with MSVC in Debug.",
+            "inherits": [ "msvc-clang", "debug", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-release",
+            "displayName": "MSVC Clang Release",
+            "description": "Build with MSVC in Release.",
+            "inherits": [ "msvc-clang", "release", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-relwithdebinfo",
+            "displayName": "MSVC Clang RelWithDebInfo",
+            "description": "Build with MSVC in RelWithDebInfo.",
+            "inherits": [ "msvc-clang", "relwithdebinfo", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-cl-debug",
+            "displayName": "clang-cl Debug",
+            "description": "Build with MSVC in Debug.",
+            "inherits": [ "msvc-clang-cl", "debug", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-cl-release",
+            "displayName": "clang-cl Release",
+            "description": "Build with MSVC in Release.",
+            "inherits": [ "msvc-clang-cl", "release", "dev-mode" ]
+        },
+        {
+            "name": "msvc-clang-cl-relwithdebinfo",
+            "displayName": "clang-cl RelWithDebInfo",
+            "description": "Build with MSVC in RelWithDebInfo.",
+            "inherits": [ "msvc-clang-cl", "relwithdebinfo", "dev-mode" ]
+        },
+        {
+            "name": "vs2022",
             "displayName": "Visual Studio 2022",
             "description": "Generate a Visual Studio 2022 solution.",
-            "inherits": ["dev-mode", "vcpkg"],
-            "binaryDir": "${sourceDir}/build/${presetName}",
+            "inherits": [ "base", "dev-mode" ],
             "generator": "Visual Studio 17 2022",
             "condition": {
                 "type": "equals",
@@ -54,51 +178,33 @@
             }
         },
         {
-            "name": "ci-vs2022-clang",
+            "name": "vs2022-clang",
             "displayName": "Visual Studio 2022 (Clang)",
             "description": "Generate a Visual Studio 2022 solution.",
-            "inherits": ["ci-vs2022"],
-            "toolset" :{
+            "inherits": [ "vs2022" ],
+            "toolset": {
                 "strategy": "set",
                 "value": "ClangCL"
             }
         },
         {
-            "name": "ci-ninja-multi-gcc14",
-            "binaryDir": "${sourceDir}/build/${presetName}",
-            "inherits": ["ninja-multi", "gcc14", "dev-mode", "vcpkg"],
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            }
+            "name": "gcc14-debug",
+            "displayName": "gcc14 Debug",
+            "description": "Build with gcc14 in Debug.",
+            "inherits": [ "gcc14", "debug", "dev-mode" ]
+        },
+        {
+            "name": "gcc14-release",
+            "displayName": "gcc14 Release",
+            "description": "Build with gcc14 in Release.",
+            "inherits": [ "gcc14", "release", "dev-mode" ]
+        },
+        {
+            "name": "gcc14-relwithdebinfo",
+            "displayName": "gcc14 RelWithDebInfo",
+            "description": "Build with gcc14 in RelWithDebInfo.",
+            "inherits": [ "gcc14", "relwithdebinfo", "dev-mode" ]
         }
     ],
-    "buildPresets": [
-        {
-            "name": "ci-ninja-multi-gcc14",
-            "displayName": "",
-            "configurePreset": "ci-ninja-multi-gcc14"
-        },
-        {
-            "name": "ci-vs2022",
-            "displayName": "",
-            "configurePreset": "ci-vs2022",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        },
-        {
-            "name": "ci-vs2022-clang",
-            "displayName": "",
-            "configurePreset": "ci-vs2022-clang",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            }
-        }
-    ]
+    "buildPresets": []
 }

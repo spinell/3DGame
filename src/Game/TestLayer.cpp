@@ -1,5 +1,3 @@
-#pragma once
-
 #include "TestLayer.h"
 
 #include <Engine/Application.h>
