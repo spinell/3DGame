@@ -17,13 +17,13 @@ namespace Engine {
 SDL3Window::SDL3Window(const WindowCreateInfo& createInfo) {
     SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "1");
     mWindow = SDL_CreateWindow(createInfo.title.c_str(), createInfo.width, createInfo.height,
-                               SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+                               SDL_WINDOW_RESIZABLE /*| SDL_WINDOW_OPENGL*/);
     CheckSDLError("Creating winodws");
 
     // TODO: Remove the SDL renderer when the Vulkan renderer is ready.
-    mRenderer = SDL_CreateRenderer(mWindow, nullptr);
-    CheckSDLError("Creating rendering");
-    ENGINE_CORE_INFO("SDL Renderer: {}", SDL_GetRendererName(mRenderer));
+    //mRenderer = SDL_CreateRenderer(mWindow, nullptr);
+    //CheckSDLError("Creating rendering");
+    //ENGINE_CORE_INFO("SDL Renderer: {}", SDL_GetRendererName(mRenderer));
 
     // This function will enable text input
     // (SDL_EVENT_TEXT_INPUT and SDL_EVENT_TEXT_EDITING events) in the specified window.

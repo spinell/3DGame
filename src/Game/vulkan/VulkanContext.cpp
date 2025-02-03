@@ -16,7 +16,7 @@ VkQueue          sGraphicsQueue{VK_NULL_HANDLE};
 VmaAllocator     sVmaAllocator{VK_NULL_HANDLE};
 
 bool Initialize() {
-    const uint32_t desiredVulkanVersion = VK_MAKE_API_VERSION(0, 1, 4, 0);
+    const uint32_t desiredVulkanVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
     ENGINE_CORE_INFO("Initialisation vulkan ...");
 
@@ -122,12 +122,25 @@ bool Initialize() {
     deviceFeatures.features.multiDrawIndirect  = true;
     deviceFeatures.features.drawIndirectFirstInstance = true;
 
+    VkPhysicalDeviceVulkan12Features vulkan12Features{};
+    vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+    VkPhysicalDeviceVulkan13Features vulkan13Features{};
+    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    vulkan13Features.dynamicRendering = true;
+    vulkan13Features.synchronization2 = true;
+
+    // chain features
+    deviceFeatures.pNext = &vulkan12Features;
+    vulkan12Features.pNext = &vulkan13Features;
+
     std::vector<const char*> deviceExtensions;
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -197,4 +210,8 @@ bool isLayerSupported() { return true; }
 bool isInstanceExtensionSupported() { return true; }
 
 bool isDeviceExtensionSupported() { return true; }
+
+uint32_t getGraphicQueueFamilyIndex() { return sGraphicQueueFamilyIndex; }
+VkQueue  getGraphicQueue() { return sGraphicsQueue; }
+
 } // namespace VulkanContext

@@ -10,6 +10,8 @@ add_executable(Game
     vulkan/VulkanContext.cpp
     vulkan/VulkanUtils.h
     vulkan/VulkanUtils.cpp
+    vulkan/VulkanSwapchain.h
+    vulkan/VulkanSwapchain.cpp
     vulkan/vma/vma.h
     vulkan/vma/vma_build.cpp
     vulkan/vma/vma_custom_configuration.h

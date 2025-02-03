@@ -9,6 +9,8 @@ void Shutdown();
 VkInstance       getIntance();
 VkPhysicalDevice getPhycalDevice();
 VkDevice         getDevice();
+uint32_t         getGraphicQueueFamilyIndex();
+VkQueue          getGraphicQueue();
 
 bool isLayerSupported();
 bool isInstanceExtensionSupported();

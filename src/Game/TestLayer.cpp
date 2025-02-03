@@ -1,12 +1,25 @@
 #include "TestLayer.h"
 
+#include "vulkan/VulkanContext.h"
+#include "vulkan/VulkanUtils.h"
+#include "vulkan/VulkanSwapchain.h"
+
+
 #include <Engine/Application.h>
 #include <Engine/Event.h>
 #include <Engine/Input.h>
 #include <Engine/Layer.h>
 #include <Engine/Log.h>
+#include <Engine/SDL3/SDL3Window.h>
+#include <SDL3/SDL.h>
 #include <imgui.h>
-#include "vulkan/VulkanContext.h"
+
+struct FrameData {
+    VkCommandPool   commandPool;
+    VkCommandBuffer commandBuffer;
+};
+FrameData frameData{};
+VulkanSwapchain* vulkanSwapchain{};
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 
@@ -14,13 +27,190 @@ TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
+    auto sdlWindow = Engine::Application::Get().GetWindow().getSDLWindow();
+    auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+
+    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
+        .hinstance = nullptr,
+        .hwnd = (HWND)win32Handle
+    };
+    VkSurfaceKHR surface;
+    if(VK_SUCCESS != vkCreateWin32SurfaceKHR(VulkanContext::getIntance(), &surfaceCreateInfo, nullptr, &surface)) {
+        ENGINE_CORE_ERROR("vkCreateWin32SurfaceKHR fail");
+    }
+    vulkanSwapchain = new VulkanSwapchain(VulkanContext::getIntance(), VulkanContext::getPhycalDevice(), VulkanContext::getDevice(), surface);
+    vulkanSwapchain->build();
+    // Create Command pool
+    {
+        VkCommandPoolCreateFlags flags{};
+        // allows any command buffer allocated from a pool to be individually
+        // reset to the initial state; either by calling vkResetCommandBuffer,
+        // or via the implicit reset when calling vkBeginCommandBuffer.
+        flags |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        // specifies that command buffers allocated from the pool will be short-lived,
+        // meaning that they will be reset or freed in a relatively short timeframe.
+        flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        VkCommandPoolCreateInfo commandPoolCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = flags,
+            .queueFamilyIndex = VulkanContext::getGraphicQueueFamilyIndex()};
+        vkCreateCommandPool(VulkanContext::getDevice(), &commandPoolCreateInfo, nullptr,
+                            &frameData.commandPool);
+    }
+
+    // Command buffer allocation
+    {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool        = frameData.commandPool;
+        allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
+        vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
+    }
 }
 
 void TestLayer1::onDetach() {
+    vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
     VulkanContext::Shutdown();
 }
 
-void TestLayer1::onUpdate(float timeStep) {}
+void TestLayer1::onUpdate(float timeStep) {
+    // start command buffer
+    {
+        VkCommandBufferUsageFlags flags{};
+        // The command buffer will be rerecorded right after executing it once.
+        //flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        // This is a secondary command buffer that will be entirely within a single render pass.
+        //flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+        // The command buffer can be resubmitted while it is also already pending execution.
+        //flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = flags; // Optional
+        beginInfo.pInheritanceInfo = nullptr; // Optional
+
+        // If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will implicitly reset it.
+        vkBeginCommandBuffer(frameData.commandBuffer, &beginInfo);
+    }
+
+    // transition swapchain image layout
+    {
+        // Move the swapchain's back image layour from
+        // VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        VulkanUtils::transitionImageLayout(
+            frameData.commandBuffer, vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+    }
+
+    // start render pass
+    {
+        VkClearValue clearValue;
+        clearValue.color.float32[0] = 1;
+        clearValue.color.float32[1] = 0;
+        clearValue.color.float32[2] = 0;
+        clearValue.color.float32[3] = 1;
+
+        VkRenderingAttachmentInfo colorAttachmentInfo{};
+        colorAttachmentInfo.sType     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachmentInfo.pNext     = 0;
+        colorAttachmentInfo.imageView = vulkanSwapchain->getImageViews()[vulkanSwapchain->getCurrentBackImageIndex()];
+        colorAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
+        colorAttachmentInfo.resolveImageView   = nullptr;
+        colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachmentInfo.loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachmentInfo.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachmentInfo.clearValue         = clearValue;
+
+        VkRenderingInfo info{};
+        info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        info.pNext                = nullptr;
+        info.flags                = 0;
+        info.renderArea           = {0, 0, vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height};
+        info.layerCount           = 1;
+        info.viewMask             = 0;
+        info.colorAttachmentCount = 1;
+        info.pColorAttachments    = &colorAttachmentInfo;
+        info.pDepthAttachment     = nullptr;
+        info.pStencilAttachment   = nullptr;
+        vkCmdBeginRendering(frameData.commandBuffer, &info);
+    }
+
+    // end render pass
+    vkCmdEndRendering(frameData.commandBuffer);
+
+    // transition swapchain imagelayout
+    {
+        // Move the swapchain's back image layour from
+        // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        VulkanUtils::transitionImageLayout(
+            frameData.commandBuffer, vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
+    }
+
+    // end command buffer
+    vkEndCommandBuffer(frameData.commandBuffer);
+
+
+    // submit command buffer
+    {
+        VkCommandBufferSubmitInfo commandBufferSubmitInfo{};
+        commandBufferSubmitInfo.sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        commandBufferSubmitInfo.pNext         = nullptr;
+        commandBufferSubmitInfo.commandBuffer = frameData.commandBuffer;
+        commandBufferSubmitInfo.deviceMask    = 0;
+
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphoreSubmitInfo;
+        {
+            VkSemaphoreSubmitInfo info;
+            info.sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            info.pNext       = nullptr;
+            info.semaphore   = vulkanSwapchain->getImageAvailableSemaphores();
+            info.value       = 0;
+            info.stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            info.deviceIndex = 0;
+            waitSemaphoreSubmitInfo.push_back(info);
+        }
+        std::vector<VkSemaphoreSubmitInfo> signalSemaphoreSubmitInfo;
+        {
+            VkSemaphoreSubmitInfo info;
+            info.sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            info.pNext       = nullptr;
+            info.semaphore   = vulkanSwapchain->getRenderFinishSemaphores();
+            info.value       = 0;
+            info.stageMask   = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            info.deviceIndex = 0;
+            signalSemaphoreSubmitInfo.push_back(info);
+        }
+
+        // Move the command buffer to the Pending states
+        VkSubmitInfo2 submitInfo2{};
+        submitInfo2.sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submitInfo2.pNext                    = nullptr;
+        submitInfo2.flags                    = 0;
+        submitInfo2.waitSemaphoreInfoCount   = waitSemaphoreSubmitInfo.size();
+        submitInfo2.pWaitSemaphoreInfos      = waitSemaphoreSubmitInfo.data();
+        submitInfo2.commandBufferInfoCount   = 1;
+        submitInfo2.pCommandBufferInfos      = &commandBufferSubmitInfo;
+        submitInfo2.signalSemaphoreInfoCount = signalSemaphoreSubmitInfo.size();
+        submitInfo2.pSignalSemaphoreInfos    = signalSemaphoreSubmitInfo.data();
+        VK_CHECK(vkQueueSubmit2(VulkanContext::getGraphicQueue(), 1 /*submitCount*/, &submitInfo2, 0));
+    }
+
+    vulkanSwapchain->present(VulkanContext::getGraphicQueue(), VK_PRESENT_MODE_MAILBOX_KHR);
+
+    // tempo
+    vkDeviceWaitIdle(VulkanContext::getDevice());
+}
 
 void TestLayer1::onImGuiRender() {}
 

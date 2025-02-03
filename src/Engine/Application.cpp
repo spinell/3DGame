@@ -11,6 +11,8 @@
 #include <SDL3/SDL_opengl.h>
 #include <imgui.h>
 
+#define ENABLE_IMGUI
+
 namespace {
 void printSDL2Info() {
     const int compiled = SDL_VERSION;      // hardcoded number from SDL headers
@@ -61,8 +63,10 @@ Engine::Application::Application() {
     }
 
     mWindow     = new SDL3Window();
+#ifdef DISABLE_IMGUI
     mImGuiLayer = new ImGuiLayer();
     pushOverlay(mImGuiLayer);
+#endif
 }
 
 Engine::Application::~Application() {
@@ -113,12 +117,13 @@ int Engine::Application::run() {
         }
 
         // Update Imgui
+#ifdef DISABLE_IMGUI
         mImGuiLayer->begin();
         for (Layer* layer : mLayerStack) {
             layer->onImGuiRender();
         }
         mImGuiLayer->end();
-
+#endif
         // TODO: Remove this when vulkan renderer is ready
         SDL_GL_SwapWindow(mWindow->getSDLWindow());
     }
@@ -134,10 +139,11 @@ void Engine::Application::onEvent(const Event& event) {
     Engine::Input::OnEvent(event);
 
     // if Imgui use the keyboard or the mouse, don't propagate event to layers
+#ifdef DISABLE_IMGUI
     if (ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard) {
         return;
     }
-
+#endif
     for (auto it = mLayerStack.rbegin(); it != mLayerStack.rend(); ++it) {
         if ((*it)->onEvent(event)) {
             // The layer has handle the event,
