@@ -1,4 +1,10 @@
+:::::::::::::::::::::::::::::::::::::::::::::::::::
+::    Generate a Visual studio 2022 solution
+:::::::::::::::::::::::::::::::::::::::::::::::::::
 @echo off
 setlocal
-cmake -S %~dp0 -B %~dp0build/vs2022 -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
+
+set src_dir=%~dp0
+set build_dir=%~dp0../build-vs2022
+cmake -S %src_dir% -B %build_dir% --preset ci-vs2022
 endlocal
