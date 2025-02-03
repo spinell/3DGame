@@ -85,6 +85,7 @@
             "binaryDir":  "${sourceDir}/build/${presetName}/build",
             "installDir": "${sourceDir}/build/${presetName}/install",
             "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "VCPKG_INSTALLED_DIR" : "${sourceDir}/build"
             }
         },
