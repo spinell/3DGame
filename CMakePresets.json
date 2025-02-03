@@ -21,7 +21,8 @@
             "name": "dev-mode",
             "hidden": true,
             "cacheVariables": {
-                "VCPKG_MANIFEST_FEATURES": "tests"
+                "VCPKG_MANIFEST_FEATURES": "tests",
+                "BUILD_TEST": true
             }
         },
         {
