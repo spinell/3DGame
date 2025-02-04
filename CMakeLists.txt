@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 include(cmake/OutOfSourceBuild.cmake)
+include(cmake/glslang_compiler.cmake)
 
 project(3DGame
     VERSION 0.0.1
