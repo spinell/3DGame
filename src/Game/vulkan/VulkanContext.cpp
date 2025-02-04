@@ -1,4 +1,5 @@
 #include "VulkanContext.h"
+#include "../spirv/SpirvReflection.h"
 
 #include "VulkanUtils.h"
 #include "vk_mem_alloc.h"
@@ -215,7 +216,11 @@ bool isDeviceExtensionSupported() { return true; }
 uint32_t getGraphicQueueFamilyIndex() { return sGraphicQueueFamilyIndex; }
 VkQueue  getGraphicQueue() { return sGraphicsQueue; }
 
-Shader createShaderModule(std::span<const uint32_t> spirv, VkShaderStageFlagBits stage) {
+Shader createShaderModule(std::span<const uint32_t> spirv) {
+
+    SpirvReflection spirvReflection;
+    spirvReflection.reflect(spirv);
+
     // create the shader module
     VkShaderModuleCreateInfo pCreateInfo{};
     pCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -239,7 +244,8 @@ Shader createShaderModule(std::span<const uint32_t> spirv, VkShaderStageFlagBits
     shader.stageCreateInfo.module = shaderModule;
     shader.stageCreateInfo.pName = "main";
     shader.stageCreateInfo.pSpecializationInfo = nullptr;
-    shader.stageCreateInfo.stage = stage;
+    shader.stageCreateInfo.stage = spirvReflection.getShaderStage();
+    shader.pushConstantRange = spirvReflection.getPushConstantRange();
     return shader;
 }
 
@@ -258,6 +264,21 @@ VkPipelineLayout createPipelineLayout(
     VkPipelineLayout layout{};
     vkCreatePipelineLayout(sDevice, &pipelineLayoutInfo, nullptr, &layout);
     return layout;
+}
+
+VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
+    std::array<VkPushConstantRange, 2> pushConstantRange;
+    uint32_t nbPushRange = 0;
+
+    if(vert.pushConstantRange.size > 0){
+        pushConstantRange[nbPushRange] = vert.pushConstantRange;
+        nbPushRange++;
+    }
+    if(frag.pushConstantRange.size > 0){
+        pushConstantRange[nbPushRange] = frag.pushConstantRange;
+        nbPushRange++;
+    }
+    return createPipelineLayout(0, nullptr, nbPushRange, pushConstantRange.data());
 }
 
 GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, VkPipelineLayout pipelineLayout) {

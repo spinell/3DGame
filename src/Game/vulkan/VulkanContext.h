@@ -6,6 +6,7 @@
 struct Shader {
     VkShaderModule                  shaderModule{};
     VkPipelineShaderStageCreateInfo stageCreateInfo{};
+    VkPushConstantRange             pushConstantRange{};
 };
 struct GraphicPipeline {
     VkPipeline       pipeline{};
@@ -27,12 +28,12 @@ bool isLayerSupported();
 bool isInstanceExtensionSupported();
 bool isDeviceExtensionSupported();
 
-[[nodiscard]] Shader           createShaderModule(std::span<const uint32_t> spirv,
-                                                  VkShaderStageFlagBits     stage);
+[[nodiscard]] Shader           createShaderModule(std::span<const uint32_t> spirv);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(uint32_t               setLayoutCount,
                                                     VkDescriptorSetLayout* descriptorSetLayout,
                                                     uint32_t               rangeCount,
                                                     VkPushConstantRange*   ranges);
+[[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader           vert,
                                                      Shader           frag,
                                                      VkPipelineLayout pipelineLayout);

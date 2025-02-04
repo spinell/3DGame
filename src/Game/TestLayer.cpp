@@ -94,30 +94,15 @@ void TestLayer1::onAttach() {
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
 
-    vertShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl,
-                                                       VK_SHADER_STAGE_VERTEX_BIT);
-    fragShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl,
-                                                       VK_SHADER_STAGE_FRAGMENT_BIT);
-    pipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, 0, nullptr);
+    vertShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
+    fragShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
+    pipelineLayout = VulkanContext::createPipelineLayout(vertShader, fragShader);
     pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader, pipelineLayout);
 
+    vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl);
+    fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
 
-    SpirvReflection spirvReflection1;
-    SpirvReflection spirvReflection2;
-    spirvReflection1.reflect(spirv_triangle_vert_glsl);
-    spirvReflection2.reflect(spirv_triangle_frag_glsl);
-
-
-    vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl,
-                                                       spirvReflection1.getShaderStage());
-    fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl,
-                                                       spirvReflection2.getShaderStage());
-
-    std::array<VkPushConstantRange, 2> pushConstantRange = {
-        spirvReflection1.getPushConstantRange(),
-        spirvReflection2.getPushConstantRange()
-    };
-    trianglePipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, pushConstantRange.size(), pushConstantRange.data());
+    trianglePipelineLayout = VulkanContext::createPipelineLayout(vertTriangleShader, fragTriangleShader);
     trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, trianglePipelineLayout);
 }
 
