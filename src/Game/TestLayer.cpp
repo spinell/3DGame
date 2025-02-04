@@ -97,6 +97,7 @@ void TestLayer1::onDetach() {
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
     vkDestroyPipelineLayout(VulkanContext::getDevice(), pipelineLayout, nullptr);
     vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
+    delete vulkanSwapchain;
     VulkanContext::Shutdown();
 }
 
