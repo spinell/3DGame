@@ -39,6 +39,7 @@ find_package(OpenGL REQUIRED)
 
 find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
 add_subdirectory(src/Engine)
 add_subdirectory(src/Editor)

@@ -4,7 +4,8 @@
 #version 450
 
 layout( push_constant ) uniform constants {
-    vec4 offset;
+    vec2 offset;
+    vec2 size;
 } push;
 
 vec4 vertices[3] = {
@@ -14,5 +15,5 @@ vec4 vertices[3] = {
 };
 
 void main() {
-    gl_Position = vertices[gl_VertexIndex] * vec4(push.offset.zw, 1, 1) + vec4(push.offset.xy, 1, 1);
+    gl_Position = vertices[gl_VertexIndex] * vec4(push.size.xy, 1, 1) + vec4(push.offset.xy, 1, 1);
 }

@@ -16,6 +16,7 @@
 #include <spirv_fullscreen_quad_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
 #include <spirv_triangle_frag_glsl.h>
+#include "Spirv/SpirvReflection.h"
 #include <array>
 
 struct FrameData {
@@ -101,14 +102,20 @@ void TestLayer1::onAttach() {
     pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader, pipelineLayout);
 
 
+    SpirvReflection spirvReflection1;
+    SpirvReflection spirvReflection2;
+    spirvReflection1.reflect(spirv_triangle_vert_glsl);
+    spirvReflection2.reflect(spirv_triangle_frag_glsl);
+
+
     vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl,
-                                                       VK_SHADER_STAGE_VERTEX_BIT);
+                                                       spirvReflection1.getShaderStage());
     fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl,
-                                                       VK_SHADER_STAGE_FRAGMENT_BIT);
+                                                       spirvReflection2.getShaderStage());
 
     std::array<VkPushConstantRange, 2> pushConstantRange = {
-        VkPushConstantRange{VK_SHADER_STAGE_VERTEX_BIT,   0, sizeof(float) * 4},
-        VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(PushData,color), sizeof(float) * 4}
+        spirvReflection1.getPushConstantRange(),
+        spirvReflection2.getPushConstantRange()
     };
     trianglePipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, pushConstantRange.size(), pushConstantRange.data());
     trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, trianglePipelineLayout);

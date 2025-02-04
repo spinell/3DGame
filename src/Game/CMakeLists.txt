@@ -5,6 +5,8 @@ add_executable(Game
     main.cpp
     TestLayer.h
     TestLayer.cpp
+    SpirV/SpirvReflection.h
+    SpirV/SpirvReflection.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp
@@ -41,6 +43,7 @@ target_link_libraries(Game
         GPUOpen::VulkanMemoryAllocator
         Vulkan::Vulkan
         Vulkan::Headers
+        unofficial::spirv-reflect
 )
 
 target_compile_definitions(Game
