@@ -15,7 +15,23 @@ add_executable(Game
     vulkan/vma/vma.h
     vulkan/vma/vma_build.cpp
     vulkan/vma/vma_custom_configuration.h
-    )
+)
+
+#
+# Add shaders
+#
+target_glsl_shaders(Game
+	CPP_HEADER
+	PRIVATE
+		Shaders/fullscreen_quad.vert.glsl
+		Shaders/fullscreen_quad.frag.glsl
+)
+
+target_include_directories(Game
+    PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
+)
+
 
 target_link_libraries(Game
     PRIVATE
@@ -34,5 +50,5 @@ target_compile_definitions(Game
 ###############################################################
 #		Group sources for IDI like Visual Studio
 ###############################################################
-get_target_property(Game_SOURCES Game SOURCES)
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${Game_SOURCES})
+#get_target_property(Game_SOURCES Game SOURCES)
+#source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${Game_SOURCES})

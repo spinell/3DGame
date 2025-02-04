@@ -1,9 +1,8 @@
 #include "TestLayer.h"
 
 #include "vulkan/VulkanContext.h"
-#include "vulkan/VulkanUtils.h"
 #include "vulkan/VulkanSwapchain.h"
-
+#include "vulkan/VulkanUtils.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -13,13 +12,19 @@
 #include <Engine/SDL3/SDL3Window.h>
 #include <SDL3/SDL.h>
 #include <imgui.h>
+#include <spirv_fullscreen_quad_frag_glsl.h>
+#include <spirv_fullscreen_quad_vert_glsl.h>
 
 struct FrameData {
     VkCommandPool   commandPool;
     VkCommandBuffer commandBuffer;
 };
-FrameData frameData{};
+FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
+Shader           vertShader;
+Shader           fragShader;
+VkPipelineLayout pipelineLayout;
+GraphicPipeline  pipeline;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 
@@ -27,21 +32,24 @@ TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
-    auto sdlWindow = Engine::Application::Get().GetWindow().getSDLWindow();
-    auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+    auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
+    auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
+                                              SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
 
     VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .pNext = nullptr,
-        .flags = 0,
+        .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .pNext     = nullptr,
+        .flags     = 0,
         .hinstance = nullptr,
-        .hwnd = (HWND)win32Handle
-    };
+        .hwnd      = (HWND)win32Handle};
     VkSurfaceKHR surface;
-    if(VK_SUCCESS != vkCreateWin32SurfaceKHR(VulkanContext::getIntance(), &surfaceCreateInfo, nullptr, &surface)) {
+    if (VK_SUCCESS != vkCreateWin32SurfaceKHR(VulkanContext::getIntance(), &surfaceCreateInfo,
+                                              nullptr, &surface)) {
         ENGINE_CORE_ERROR("vkCreateWin32SurfaceKHR fail");
     }
-    vulkanSwapchain = new VulkanSwapchain(VulkanContext::getIntance(), VulkanContext::getPhycalDevice(), VulkanContext::getDevice(), surface);
+    vulkanSwapchain =
+        new VulkanSwapchain(VulkanContext::getIntance(), VulkanContext::getPhycalDevice(),
+                            VulkanContext::getDevice(), surface);
     vulkanSwapchain->build();
     // Create Command pool
     {
@@ -72,10 +80,23 @@ void TestLayer1::onAttach() {
         allocInfo.commandBufferCount = 1;
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
+
+    vertShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl,
+                                                       VK_SHADER_STAGE_VERTEX_BIT);
+    fragShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl,
+                                                       VK_SHADER_STAGE_FRAGMENT_BIT);
+    pipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, 0, nullptr);
+    pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader, pipelineLayout);
 }
 
 void TestLayer1::onDetach() {
+    vkDeviceWaitIdle(VulkanContext::getDevice());
+
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), pipelineLayout, nullptr);
+    vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
     VulkanContext::Shutdown();
 }
 
@@ -84,17 +105,18 @@ void TestLayer1::onUpdate(float timeStep) {
     {
         VkCommandBufferUsageFlags flags{};
         // The command buffer will be rerecorded right after executing it once.
-        //flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        // flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         // This is a secondary command buffer that will be entirely within a single render pass.
-        //flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+        // flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
         // The command buffer can be resubmitted while it is also already pending execution.
-        //flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        // flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
         VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = flags; // Optional
+        beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags            = flags;   // Optional
         beginInfo.pInheritanceInfo = nullptr; // Optional
 
-        // If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will implicitly reset it.
+        // If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will
+        // implicitly reset it.
         vkBeginCommandBuffer(frameData.commandBuffer, &beginInfo);
     }
 
@@ -103,9 +125,11 @@ void TestLayer1::onUpdate(float timeStep) {
         // Move the swapchain's back image layour from
         // VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         VulkanUtils::transitionImageLayout(
-            frameData.commandBuffer, vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
+            frameData.commandBuffer,
+            vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
     }
 
@@ -118,9 +142,10 @@ void TestLayer1::onUpdate(float timeStep) {
         clearValue.color.float32[3] = 1;
 
         VkRenderingAttachmentInfo colorAttachmentInfo{};
-        colorAttachmentInfo.sType     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        colorAttachmentInfo.pNext     = 0;
-        colorAttachmentInfo.imageView = vulkanSwapchain->getImageViews()[vulkanSwapchain->getCurrentBackImageIndex()];
+        colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachmentInfo.pNext = 0;
+        colorAttachmentInfo.imageView =
+            vulkanSwapchain->getImageViews()[vulkanSwapchain->getCurrentBackImageIndex()];
         colorAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         colorAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
         colorAttachmentInfo.resolveImageView   = nullptr;
@@ -133,7 +158,8 @@ void TestLayer1::onUpdate(float timeStep) {
         info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
         info.pNext                = nullptr;
         info.flags                = 0;
-        info.renderArea           = {0, 0, vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height};
+        info.renderArea           = {0, 0, vulkanSwapchain->getSize().width,
+                                     vulkanSwapchain->getSize().height};
         info.layerCount           = 1;
         info.viewMask             = 0;
         info.colorAttachmentCount = 1;
@@ -141,6 +167,29 @@ void TestLayer1::onUpdate(float timeStep) {
         info.pDepthAttachment     = nullptr;
         info.pStencilAttachment   = nullptr;
         vkCmdBeginRendering(frameData.commandBuffer, &info);
+    }
+
+    // render stuff
+    {
+        VkViewport viewport;
+        viewport.x = 0;
+        viewport.y = 0;
+        viewport.width = vulkanSwapchain->getSize().width;
+        viewport.height = vulkanSwapchain->getSize().height;
+        viewport.minDepth = 0;
+        viewport.maxDepth = 1;
+        vkCmdSetViewportWithCount(frameData.commandBuffer, 1, &viewport);
+
+        VkRect2D rect;
+        rect.offset.x = 0;
+        rect.offset.y = 0;
+        rect.extent.width= vulkanSwapchain->getSize().width;
+        rect.extent.height= vulkanSwapchain->getSize().height;
+        vkCmdSetScissorWithCount(frameData.commandBuffer, 1, &rect);
+
+        vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
     }
 
     // end render pass
@@ -151,7 +200,8 @@ void TestLayer1::onUpdate(float timeStep) {
         // Move the swapchain's back image layour from
         // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
         VulkanUtils::transitionImageLayout(
-            frameData.commandBuffer, vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
+            frameData.commandBuffer,
+            vulkanSwapchain->getImages()[vulkanSwapchain->getCurrentBackImageIndex()],
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
@@ -159,7 +209,6 @@ void TestLayer1::onUpdate(float timeStep) {
 
     // end command buffer
     vkEndCommandBuffer(frameData.commandBuffer);
-
 
     // submit command buffer
     {
@@ -203,7 +252,8 @@ void TestLayer1::onUpdate(float timeStep) {
         submitInfo2.pCommandBufferInfos      = &commandBufferSubmitInfo;
         submitInfo2.signalSemaphoreInfoCount = signalSemaphoreSubmitInfo.size();
         submitInfo2.pSignalSemaphoreInfos    = signalSemaphoreSubmitInfo.data();
-        VK_CHECK(vkQueueSubmit2(VulkanContext::getGraphicQueue(), 1 /*submitCount*/, &submitInfo2, 0));
+        VK_CHECK(
+            vkQueueSubmit2(VulkanContext::getGraphicQueue(), 1 /*submitCount*/, &submitInfo2, 0));
     }
 
     vulkanSwapchain->present(VulkanContext::getGraphicQueue(), VK_PRESENT_MODE_MAILBOX_KHR);
