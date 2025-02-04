@@ -14,6 +14,9 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
+#include <spirv_triangle_vert_glsl.h>
+#include <spirv_triangle_frag_glsl.h>
+#include <array>
 
 struct FrameData {
     VkCommandPool   commandPool;
@@ -23,10 +26,19 @@ FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
 Shader           vertShader;
 Shader           fragShader;
+Shader           vertTriangleShader;
+Shader           fragTriangleShader;
 VkPipelineLayout pipelineLayout;
 GraphicPipeline  pipeline;
-
+VkPipelineLayout trianglePipelineLayout;
+GraphicPipeline  trianglePipeline;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
+
+struct PushData{
+    float offset[2];
+    float size[2];
+    float color[4];
+};
 
 TestLayer1::~TestLayer1() {}
 
@@ -87,6 +99,19 @@ void TestLayer1::onAttach() {
                                                        VK_SHADER_STAGE_FRAGMENT_BIT);
     pipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, 0, nullptr);
     pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader, pipelineLayout);
+
+
+    vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl,
+                                                       VK_SHADER_STAGE_VERTEX_BIT);
+    fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl,
+                                                       VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    std::array<VkPushConstantRange, 2> pushConstantRange = {
+        VkPushConstantRange{VK_SHADER_STAGE_VERTEX_BIT,   0, sizeof(float) * 4},
+        VkPushConstantRange{VK_SHADER_STAGE_FRAGMENT_BIT, offsetof(PushData,color), sizeof(float) * 4}
+    };
+    trianglePipelineLayout = VulkanContext::createPipelineLayout(0, nullptr, pushConstantRange.size(), pushConstantRange.data());
+    trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, trianglePipelineLayout);
 }
 
 void TestLayer1::onDetach() {
@@ -95,8 +120,12 @@ void TestLayer1::onDetach() {
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleShader.shaderModule, nullptr);
     vkDestroyPipelineLayout(VulkanContext::getDevice(), pipelineLayout, nullptr);
     vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipelineLayout, nullptr);
+    vkDestroyPipeline(VulkanContext::getDevice(), trianglePipeline.pipeline, nullptr);
     delete vulkanSwapchain;
     VulkanContext::Shutdown();
 }
@@ -190,6 +219,22 @@ void TestLayer1::onUpdate(float timeStep) {
 
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+
+
+        PushData pushData;
+        pushData.offset[0]= -.8f;
+        pushData.offset[1]= -.4f;
+        pushData.size[0]  = .2f;
+        pushData.size[1]  = .2f;
+        pushData.color[0] = 0;
+        pushData.color[1] = 0;
+        pushData.color[2] = 1;
+        pushData.color[3] = 1;
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,    0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
+        vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
     }
 
