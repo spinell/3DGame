@@ -2,15 +2,24 @@
 #include "vulkan.h"
 
 #include <span>
+#include <vector>
 
 struct Shader {
     VkShaderModule                  shaderModule{};
     VkPipelineShaderStageCreateInfo stageCreateInfo{};
     VkPushConstantRange             pushConstantRange{};
+    std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 };
 struct GraphicPipeline {
     VkPipeline       pipeline{};
     VkPipelineLayout pipelineLayout{};
+};
+
+struct Texture {
+    VkImage       image{VK_NULL_HANDLE};
+    VkImageView   view{VK_NULL_HANDLE};
+    VmaAllocation allocation{VK_NULL_HANDLE};
+    VkSampler sampler{VK_NULL_HANDLE};
 };
 
 namespace VulkanContext {
@@ -35,5 +44,7 @@ bool isDeviceExtensionSupported();
                                                     VkPushConstantRange*   ranges);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert, Shader frag);
+
+[[nodiscard]] Texture createTexture() noexcept;
 
 } // namespace VulkanContext

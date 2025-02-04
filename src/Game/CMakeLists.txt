@@ -29,6 +29,8 @@ target_glsl_shaders(Game
 		Shaders/fullscreen_quad.frag.glsl
         Shaders/triangle.vert.glsl
         Shaders/triangle.frag.glsl
+        Shaders/triangle_tex.vert.glsl
+        Shaders/triangle_tex.frag.glsl
 )
 
 target_include_directories(Game

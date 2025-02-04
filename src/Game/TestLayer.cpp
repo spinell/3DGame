@@ -16,6 +16,8 @@
 #include <spirv_fullscreen_quad_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
 #include <spirv_triangle_frag_glsl.h>
+#include <spirv_triangle_tex_vert_glsl.h>
+#include <spirv_triangle_tex_frag_glsl.h>
 #include "Spirv/SpirvReflection.h"
 #include <array>
 
@@ -29,9 +31,13 @@ Shader           vertShader;
 Shader           fragShader;
 Shader           vertTriangleShader;
 Shader           fragTriangleShader;
+Shader           vertTriangleTexShader;
+Shader           fragTriangleTexShader;
 GraphicPipeline  pipeline;
 GraphicPipeline  trianglePipeline;
+GraphicPipeline  triangleTexPipeline;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
+Texture texture;
 
 struct PushData{
     float offset[2];
@@ -100,20 +106,33 @@ void TestLayer1::onAttach() {
     fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
 
     trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader);
+
+    vertTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_vert_glsl);
+    fragTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_frag_glsl);
+    triangleTexPipeline   = VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
+
+    texture = VulkanContext::createTexture();
 }
 
 void TestLayer1::onDetach() {
     vkDeviceWaitIdle(VulkanContext::getDevice());
 
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
+
     vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleTexShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleTexShader.shaderModule, nullptr);
+
     vkDestroyPipelineLayout(VulkanContext::getDevice(), pipeline.pipelineLayout, nullptr);
-    vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
     vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipeline.pipelineLayout, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), triangleTexPipeline.pipelineLayout, nullptr);
+
     vkDestroyPipeline(VulkanContext::getDevice(), trianglePipeline.pipeline, nullptr);
+    vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
+    vkDestroyPipeline(VulkanContext::getDevice(), triangleTexPipeline.pipeline, nullptr);
     delete vulkanSwapchain;
     VulkanContext::Shutdown();
 }
@@ -213,9 +232,9 @@ void TestLayer1::onUpdate(float timeStep) {
         PushData pushData;
         pushData.offset[0]= -.8f;
         pushData.offset[1]= -.4f;
-        pushData.size[0]  = .2f;
-        pushData.size[1]  = .2f;
-        pushData.color[0] = 0;
+        pushData.size[0]  = .5f;
+        pushData.size[1]  = .5f;
+        pushData.color[0] = 1;
         pushData.color[1] = 0;
         pushData.color[2] = 1;
         pushData.color[3] = 1;
@@ -224,6 +243,36 @@ void TestLayer1::onUpdate(float timeStep) {
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+
+#if 1
+        pushData.offset[0]=  .8f;
+        pushData.offset[1]=  .4f;
+        pushData.color[0] = 1;
+        pushData.color[1] = 1;
+        pushData.color[2] = 1;
+        pushData.color[3] = 1;
+        VkDescriptorImageInfo descriptorImageInfo;
+        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+        descriptorImageInfo.imageView = texture.view;
+        descriptorImageInfo.sampler = texture.sampler;
+
+        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanContext::getIntance(),"vkCmdPushDescriptorSetKHR");
+
+        std::array<VkWriteDescriptorSet, 1> wWriteDescriptorSet{};
+        wWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        wWriteDescriptorSet[0].dstSet = 0; // dstSet member is ignored for vkCmdPushDescriptorSetKHR.
+        wWriteDescriptorSet[0].dstBinding = 0;
+        wWriteDescriptorSet[0].descriptorCount = 1;
+        wWriteDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        wWriteDescriptorSet[0].pImageInfo = &descriptorImageInfo;
+
+        vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipelineLayout, 0/*setIndex*/, wWriteDescriptorSet.size()/*count*/, wWriteDescriptorSet.data());
+        vkCmdPushConstants(frameData.commandBuffer, triangleTexPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,   0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
+        vkCmdPushConstants(frameData.commandBuffer, triangleTexPipeline.pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
+        vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipeline);
+        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+#endif
     }
 
     // end render pass

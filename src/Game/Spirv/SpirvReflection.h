@@ -1,6 +1,7 @@
 #pragma once
-#include <span>
 #include "../vulkan/vulkan.h"
+#include <span>
+#include <vector>
 
 class SpirvReflection {
 public:
@@ -17,7 +18,11 @@ public:
         return mPushConstantRange;
     }
 
+    const std::vector<VkDescriptorSetLayoutBinding>& getDescriptorSetLayoutBinding() const {
+        return mDescriptorSetLayoutBinding;
+    }
 private:
     VkShaderStageFlagBits mShaderStage{};
     VkPushConstantRange   mPushConstantRange{};
+    std::vector<VkDescriptorSetLayoutBinding> mDescriptorSetLayoutBinding;
 };

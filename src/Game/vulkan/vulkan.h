@@ -13,4 +13,6 @@
 #	include <vulkan/vulkan.h>
 #endif
 
+#include "vma/vma.h"
+
 constexpr unsigned MAX_FRAME_IN_FLIGHT = 3u;
