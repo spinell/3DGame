@@ -1,8 +1,9 @@
 #include "VulkanContext.h"
-#include "../spirv/SpirvReflection.h"
 
 #include "VulkanUtils.h"
 #include "vk_mem_alloc.h"
+
+#include "../spirv/SpirvReflection.h"
 
 #include <Engine/Log.h>
 
@@ -217,7 +218,6 @@ uint32_t getGraphicQueueFamilyIndex() { return sGraphicQueueFamilyIndex; }
 VkQueue  getGraphicQueue() { return sGraphicsQueue; }
 
 Shader createShaderModule(std::span<const uint32_t> spirv) {
-
     SpirvReflection spirvReflection;
     spirvReflection.reflect(spirv);
 
@@ -237,23 +237,22 @@ Shader createShaderModule(std::span<const uint32_t> spirv) {
     // }
 
     Shader shader;
-    shader.shaderModule = shaderModule;
-    shader.stageCreateInfo.pNext = nullptr;
-    shader.stageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shader.stageCreateInfo.flags = 0;
+    shader.shaderModule           = shaderModule;
+    shader.stageCreateInfo.pNext  = nullptr;
+    shader.stageCreateInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader.stageCreateInfo.flags  = 0;
     shader.stageCreateInfo.module = shaderModule;
-    shader.stageCreateInfo.pName = "main";
+    shader.stageCreateInfo.pName  = "main";
     shader.stageCreateInfo.pSpecializationInfo = nullptr;
-    shader.stageCreateInfo.stage = spirvReflection.getShaderStage();
-    shader.pushConstantRange = spirvReflection.getPushConstantRange();
+    shader.stageCreateInfo.stage               = spirvReflection.getShaderStage();
+    shader.pushConstantRange                   = spirvReflection.getPushConstantRange();
     return shader;
 }
 
-VkPipelineLayout createPipelineLayout(
-    uint32_t               setLayoutCount,
-    VkDescriptorSetLayout* descriptorSetLayout,
-    uint32_t               rangeCount,
-    VkPushConstantRange*   ranges) {
+VkPipelineLayout createPipelineLayout(uint32_t               setLayoutCount,
+                                      VkDescriptorSetLayout* descriptorSetLayout,
+                                      uint32_t               rangeCount,
+                                      VkPushConstantRange*   ranges) {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount         = setLayoutCount;      // Optional
@@ -268,21 +267,20 @@ VkPipelineLayout createPipelineLayout(
 
 VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
     std::array<VkPushConstantRange, 2> pushConstantRange;
-    uint32_t nbPushRange = 0;
+    uint32_t                           nbPushRange = 0;
 
-    if(vert.pushConstantRange.size > 0){
+    if (vert.pushConstantRange.size > 0) {
         pushConstantRange[nbPushRange] = vert.pushConstantRange;
         nbPushRange++;
     }
-    if(frag.pushConstantRange.size > 0){
+    if (frag.pushConstantRange.size > 0) {
         pushConstantRange[nbPushRange] = frag.pushConstantRange;
         nbPushRange++;
     }
     return createPipelineLayout(0, nullptr, nbPushRange, pushConstantRange.data());
 }
 
-GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, VkPipelineLayout pipelineLayout) {
-
+GraphicPipeline createGraphicPipeline(Shader vert, Shader frag) {
     VkPipelineShaderStageCreateInfo shaderStages[2]{};
     shaderStages[0] = vert.stageCreateInfo;
     shaderStages[1] = frag.stageCreateInfo;
@@ -290,9 +288,9 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, VkPipelineLayout
     //
     // dynamic rendering
     //
-    std::array<VkFormat, 8> format{
-        VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED,
-        VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};
+    std::array<VkFormat, 8> format{VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED,
+                                   VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED,
+                                   VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};
     format[0] = VK_FORMAT_B8G8R8A8_UNORM;
     VkPipelineRenderingCreateInfo renderingCreateInfo{};
     renderingCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -454,18 +452,21 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, VkPipelineLayout
     vkPipelineCI.pDepthStencilState  = &dsStateCI;
     vkPipelineCI.pColorBlendState    = &colorBlending;
     vkPipelineCI.pDynamicState       = &dynamicStateCreateInfo;
-    vkPipelineCI.layout              = pipelineLayout;
+    vkPipelineCI.layout              = createPipelineLayout(vert, frag);
     vkPipelineCI.renderPass          = VK_NULL_HANDLE;
     vkPipelineCI.subpass             = 0;
     vkPipelineCI.basePipelineHandle  = VK_NULL_HANDLE;
     vkPipelineCI.basePipelineIndex   = 0;
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(sDevice, VK_NULL_HANDLE, 1, &vkPipelineCI, nullptr, &pipeline));
+    VK_CHECK(
+        vkCreateGraphicsPipelines(sDevice, VK_NULL_HANDLE, 1, &vkPipelineCI, nullptr, &pipeline));
 
-    //setDebugObjectName(mDevice, (uint64_t)vulkanGraphicPipeline->pipeline, VK_OBJECT_TYPE_PIPELINE, createInfo.debugName);
+    // setDebugObjectName(mDevice, (uint64_t)vulkanGraphicPipeline->pipeline,
+    // VK_OBJECT_TYPE_PIPELINE, createInfo.debugName);
 
     GraphicPipeline graphicPipeline;
-    graphicPipeline.pipeline = pipeline;
+    graphicPipeline.pipeline       = pipeline;
+    graphicPipeline.pipelineLayout = vkPipelineCI.layout;
     return graphicPipeline;
 }
 

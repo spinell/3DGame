@@ -34,8 +34,6 @@ bool isDeviceExtensionSupported();
                                                     uint32_t               rangeCount,
                                                     VkPushConstantRange*   ranges);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
-[[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader           vert,
-                                                     Shader           frag,
-                                                     VkPipelineLayout pipelineLayout);
+[[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert, Shader frag);
 
 } // namespace VulkanContext

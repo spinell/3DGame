@@ -29,9 +29,7 @@ Shader           vertShader;
 Shader           fragShader;
 Shader           vertTriangleShader;
 Shader           fragTriangleShader;
-VkPipelineLayout pipelineLayout;
 GraphicPipeline  pipeline;
-VkPipelineLayout trianglePipelineLayout;
 GraphicPipeline  trianglePipeline;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 
@@ -96,14 +94,12 @@ void TestLayer1::onAttach() {
 
     vertShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
     fragShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
-    pipelineLayout = VulkanContext::createPipelineLayout(vertShader, fragShader);
-    pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader, pipelineLayout);
+    pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader);
 
     vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl);
     fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
 
-    trianglePipelineLayout = VulkanContext::createPipelineLayout(vertTriangleShader, fragTriangleShader);
-    trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, trianglePipelineLayout);
+    trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader);
 }
 
 void TestLayer1::onDetach() {
@@ -114,9 +110,9 @@ void TestLayer1::onDetach() {
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleShader.shaderModule, nullptr);
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), pipelineLayout, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), pipeline.pipelineLayout, nullptr);
     vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipelineLayout, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipeline.pipelineLayout, nullptr);
     vkDestroyPipeline(VulkanContext::getDevice(), trianglePipeline.pipeline, nullptr);
     delete vulkanSwapchain;
     VulkanContext::Shutdown();
@@ -223,8 +219,8 @@ void TestLayer1::onUpdate(float timeStep) {
         pushData.color[1] = 0;
         pushData.color[2] = 1;
         pushData.color[3] = 1;
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,    0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,    0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
