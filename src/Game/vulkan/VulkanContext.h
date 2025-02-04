@@ -5,21 +5,25 @@
 #include <vector>
 
 struct Shader {
-    VkShaderModule                  shaderModule{};
-    VkPipelineShaderStageCreateInfo stageCreateInfo{};
-    VkPushConstantRange             pushConstantRange{};
+    VkShaderModule                            shaderModule{};
+    VkPipelineShaderStageCreateInfo           stageCreateInfo{};
+    VkPushConstantRange                       pushConstantRange{};
     std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 };
 struct GraphicPipeline {
     VkPipeline       pipeline{};
     VkPipelineLayout pipelineLayout{};
 };
-
+struct Buffer {
+    VkBuffer      buffer{VK_NULL_HANDLE};
+    VmaAllocation allocation{VK_NULL_HANDLE};
+    uint64_t      sizeInByte{0};
+};
 struct Texture {
     VkImage       image{VK_NULL_HANDLE};
     VkImageView   view{VK_NULL_HANDLE};
     VmaAllocation allocation{VK_NULL_HANDLE};
-    VkSampler sampler{VK_NULL_HANDLE};
+    VkSampler     sampler{VK_NULL_HANDLE};
 };
 
 namespace VulkanContext {
@@ -32,6 +36,7 @@ VkPhysicalDevice getPhycalDevice();
 VkDevice         getDevice();
 uint32_t         getGraphicQueueFamilyIndex();
 VkQueue          getGraphicQueue();
+VmaAllocator     getVmaAllocator();
 
 bool isLayerSupported();
 bool isInstanceExtensionSupported();
@@ -45,6 +50,7 @@ bool isDeviceExtensionSupported();
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert, Shader frag);
 
+[[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags usageFlags, uint64_t sizeInByte) noexcept;
 [[nodiscard]] Texture createTexture() noexcept;
 
 } // namespace VulkanContext

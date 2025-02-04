@@ -3,17 +3,18 @@
 //
 #version 450
 
+layout (location = 0) in  vec2 inUV;
+layout (location = 0) out vec4 outColor;
+
 layout (binding = 0, set = 0) uniform sampler2D sampler0;
 
-layout (location = 0) in  vec2 inUV;
-layout (location = 0) out vec4 color;
-
-layout( push_constant ) uniform constants {
-    layout(offset=16) vec4 color;
-} push;
-
+layout( set=0, binding=1 ) uniform constants {
+    vec2 offset;
+    vec2 size;
+    vec4 color;
+};
 
 void main()
 {
-    color = push.color * texture(sampler0, inUV);
+    outColor = color * texture(sampler0, inUV);
 }

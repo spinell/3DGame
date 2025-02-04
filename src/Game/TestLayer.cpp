@@ -36,6 +36,7 @@ Shader           fragTriangleTexShader;
 GraphicPipeline  pipeline;
 GraphicPipeline  trianglePipeline;
 GraphicPipeline  triangleTexPipeline;
+Buffer           uniformBuffer;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture texture;
 
@@ -111,13 +112,19 @@ void TestLayer1::onAttach() {
     fragTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_frag_glsl);
     triangleTexPipeline   = VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
 
-    texture = VulkanContext::createTexture();
+    texture       = VulkanContext::createTexture();
+    uniformBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512);
 }
 
 void TestLayer1::onDetach() {
     vkDeviceWaitIdle(VulkanContext::getDevice());
 
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
+
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer.buffer, uniformBuffer.allocation);
+    vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
+    vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
+    vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
 
     vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
@@ -251,14 +258,25 @@ void TestLayer1::onUpdate(float timeStep) {
         pushData.color[1] = 1;
         pushData.color[2] = 1;
         pushData.color[3] = 1;
+
+        void* ptr;
+        vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation, &ptr);
+        std::memcpy(ptr, &pushData, sizeof(pushData));
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation);
+
         VkDescriptorImageInfo descriptorImageInfo;
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
         descriptorImageInfo.imageView = texture.view;
         descriptorImageInfo.sampler = texture.sampler;
 
+        VkDescriptorBufferInfo descriptorBufferInfo;
+        descriptorBufferInfo.buffer = uniformBuffer.buffer;
+        descriptorBufferInfo.offset = 0;
+        descriptorBufferInfo.range  = 512;
+
         PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanContext::getIntance(),"vkCmdPushDescriptorSetKHR");
 
-        std::array<VkWriteDescriptorSet, 1> wWriteDescriptorSet{};
+        std::array<VkWriteDescriptorSet, 2> wWriteDescriptorSet{};
         wWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         wWriteDescriptorSet[0].dstSet = 0; // dstSet member is ignored for vkCmdPushDescriptorSetKHR.
         wWriteDescriptorSet[0].dstBinding = 0;
@@ -266,9 +284,15 @@ void TestLayer1::onUpdate(float timeStep) {
         wWriteDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         wWriteDescriptorSet[0].pImageInfo = &descriptorImageInfo;
 
+        wWriteDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        wWriteDescriptorSet[1].dstSet = 0; // dstSet member is ignored for vkCmdPushDescriptorSetKHR.
+        wWriteDescriptorSet[1].dstBinding = 1;
+        wWriteDescriptorSet[1].descriptorCount = 1;
+        wWriteDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        wWriteDescriptorSet[1].pBufferInfo = &descriptorBufferInfo;
+
         vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipelineLayout, 0/*setIndex*/, wWriteDescriptorSet.size()/*count*/, wWriteDescriptorSet.data());
-        vkCmdPushConstants(frameData.commandBuffer, triangleTexPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,   0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
-        vkCmdPushConstants(frameData.commandBuffer, triangleTexPipeline.pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
+
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);

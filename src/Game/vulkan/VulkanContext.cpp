@@ -7,6 +7,7 @@
 
 #include <Engine/Log.h>
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
@@ -31,12 +32,12 @@ VkBool32 VKAPI_PTR debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      mes
 }
 
 namespace VulkanContext {
-VkInstance       sInstance{VK_NULL_HANDLE};
-VkPhysicalDevice sPhysicalDevice{VK_NULL_HANDLE};
-VkDevice         sDevice{VK_NULL_HANDLE};
-uint32_t         sGraphicQueueFamilyIndex{0};
-VkQueue          sGraphicsQueue{VK_NULL_HANDLE};
-VmaAllocator     sVmaAllocator{VK_NULL_HANDLE};
+VkInstance               sInstance{VK_NULL_HANDLE};
+VkPhysicalDevice         sPhysicalDevice{VK_NULL_HANDLE};
+VkDevice                 sDevice{VK_NULL_HANDLE};
+uint32_t                 sGraphicQueueFamilyIndex{0};
+VkQueue                  sGraphicsQueue{VK_NULL_HANDLE};
+VmaAllocator             sVmaAllocator{VK_NULL_HANDLE};
 VkDebugUtilsMessengerEXT debugMessenger{VK_NULL_HANDLE};
 
 bool Initialize() {
@@ -124,7 +125,9 @@ bool Initialize() {
     //
     // Register debug callback
     //
-    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(sInstance, "vkCreateDebugUtilsMessengerEXT");
+    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(sInstance,
+                                                                  "vkCreateDebugUtilsMessengerEXT");
     debugMsgCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debugMsgCreateInfo.pNext = nullptr;
     debugMsgCreateInfo.flags = 0;
@@ -262,6 +265,8 @@ VkPhysicalDevice getPhycalDevice() { return sPhysicalDevice; }
 
 VkDevice getDevice() { return sDevice; }
 
+VmaAllocator getVmaAllocator() { return sVmaAllocator; }
+
 bool isLayerSupported() { return true; }
 
 bool isInstanceExtensionSupported() { return true; }
@@ -300,7 +305,7 @@ Shader createShaderModule(std::span<const uint32_t> spirv) {
     shader.stageCreateInfo.pSpecializationInfo = nullptr;
     shader.stageCreateInfo.stage               = spirvReflection.getShaderStage();
     shader.pushConstantRange                   = spirvReflection.getPushConstantRange();
-    shader.descriptorSetLayoutBinding = spirvReflection.getDescriptorSetLayoutBinding();
+    shader.descriptorSetLayoutBinding          = spirvReflection.getDescriptorSetLayoutBinding();
     return shader;
 }
 
@@ -333,18 +338,39 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
         nbPushRange++;
     }
 
-    VkDescriptorSetLayout descriptorSetLayout{};
-    if(frag.descriptorSetLayoutBinding.size()) {
+    // merge all bingdings
+    std::vector<VkDescriptorSetLayoutBinding> mergedBindings;
+    mergedBindings.reserve(vert.descriptorSetLayoutBinding.size() +
+                     frag.descriptorSetLayoutBinding.size());
+    mergedBindings.insert_range(mergedBindings.end(), vert.descriptorSetLayoutBinding);
+    mergedBindings.insert_range(mergedBindings.end(), frag.descriptorSetLayoutBinding);
+
+    // remove duplicate binding + merge shader stage
+    std::vector<VkDescriptorSetLayoutBinding> uniqueBindings;
+    for(auto& binding : mergedBindings) {
+        auto it = std::ranges::find_if(uniqueBindings, [&binding](const VkDescriptorSetLayoutBinding& b){ return b.binding == binding.binding; });
+        if(it == uniqueBindings.end()) {
+            uniqueBindings.push_back(binding);
+        }else {
+            it->stageFlags |= binding.stageFlags;
+        }
+    }
+
+   VkDescriptorSetLayout descriptorSetLayout{};
+    if (uniqueBindings.size()) {
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         descriptorSetLayoutCreateInfo.pNext = nullptr;
-        descriptorSetLayoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-        descriptorSetLayoutCreateInfo.bindingCount = frag.descriptorSetLayoutBinding.size();
-        descriptorSetLayoutCreateInfo.pBindings    = frag.descriptorSetLayoutBinding.data();
-        vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
+        descriptorSetLayoutCreateInfo.flags =
+            VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+        descriptorSetLayoutCreateInfo.bindingCount = uniqueBindings.size();
+        descriptorSetLayoutCreateInfo.pBindings    = uniqueBindings.data();
+        vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr,
+                                    &descriptorSetLayout);
     }
 
-    return createPipelineLayout(descriptorSetLayout != nullptr ? 1 : 0, &descriptorSetLayout, nbPushRange, pushConstantRange.data());
+    return createPipelineLayout(descriptorSetLayout != nullptr ? 1 : 0, &descriptorSetLayout,
+                                nbPushRange, pushConstantRange.data());
 }
 
 GraphicPipeline createGraphicPipeline(Shader vert, Shader frag) {
@@ -567,6 +593,46 @@ VkCommandPool createCommandPool(uint32_t queueFamilyIndex, bool transient, bool 
     VkCommandPool commandPool{};
     VK_CHECK(vkCreateCommandPool(sDevice, &commandPoolCreateInfo, nullptr, &commandPool));
     return commandPool;
+}
+
+Buffer createBuffer(VkBufferUsageFlags usageFlags, uint64_t sizeInByte) noexcept {
+    Buffer buffer{};
+    buffer.sizeInByte = sizeInByte;
+
+    VkBufferCreateInfo bufferCreateInfo{};
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.pNext = nullptr;
+    bufferCreateInfo.flags = 0;
+    bufferCreateInfo.size  = sizeInByte;
+    bufferCreateInfo.usage = usageFlags;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.flags                   = 0;
+    allocInfo.usage                   = (VmaMemoryUsage)VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    allocInfo.requiredFlags           = 0;
+    allocInfo.preferredFlags          = 0;
+    allocInfo.memoryTypeBits          = 0;
+    allocInfo.pool                    = nullptr;
+    allocInfo.pUserData               = nullptr;
+    allocInfo.priority                = 0;
+    VK_CHECK(vmaCreateBuffer(sVmaAllocator, &bufferCreateInfo, &allocInfo, &buffer.buffer,
+                             &buffer.allocation, nullptr /*allocationInfo*/
+                             ));
+
+#if 0
+    if (createInfo.debugName) {
+        setDebugObjectName(mDevice, (uint64_t)internalBuffer->buffer,
+                           VK_OBJECT_TYPE_BUFFER, createInfo.debugName);
+    }
+
+    if (createInfo.initialData) {
+        void* pData{};
+        vmaMapMemory(mVmaAllocator, internalBuffer->allocation, &pData);
+        std::memcpy(pData, createInfo.initialData, createInfo.sizeInByte);
+        vmaUnmapMemory(mVmaAllocator, internalBuffer->allocation);
+    }
+#endif
+    return buffer;
 }
 
 Texture createTexture() noexcept {
