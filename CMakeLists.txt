@@ -38,6 +38,7 @@ find_package(SDL3   3.1.6   EXACT CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 
 find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
+find_package(glm    1.0.1   EXACT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 

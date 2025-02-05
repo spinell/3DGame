@@ -6,8 +6,8 @@
 layout (location = 0) out vec2 outUV;
 
 layout( set=0, binding=1 ) uniform constants {
-    vec2 offset;
-    vec2 size;
+    mat4 projection;
+    mat4 model;
     vec4 color;
 };
 
@@ -24,5 +24,5 @@ vec2 uv[3] = {
 
 void main() {
     outUV = uv[gl_VertexIndex];
-    gl_Position = vertices[gl_VertexIndex] * vec4(size.xy, 1, 1) + vec4(offset.xy, 1, 1);
+    gl_Position = projection * model * vertices[gl_VertexIndex];
 }

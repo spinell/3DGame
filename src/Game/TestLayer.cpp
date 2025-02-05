@@ -21,6 +21,9 @@
 #include <spirv_triangle_tex_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <array>
 
 Texture createCheckBoardTexture() {
@@ -109,8 +112,8 @@ Texture              depthBuffer;
 VulkanDescriptorPool descriptorPool;
 VkDescriptorSet      descriptorSet;
 struct PushData {
-    float offset[2];
-    float size[2];
+    glm::mat4 projection;
+    glm::mat4 model;
     float color[4];
 };
 
@@ -321,28 +324,20 @@ void TestLayer1::onUpdate(float timeStep) {
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
         PushData pushData;
-        pushData.offset[0] = -.8f;
-        pushData.offset[1] = -.4f;
-        pushData.size[0]   = .5f;
-        pushData.size[1]   = .5f;
+        pushData.projection = glm::ortho(-20.f, 20.f, -20.f, 20.f, 0.f, 1.f);
+        pushData.model = glm::translate(glm::mat4(1), {1,1,0});
         pushData.color[0]  = 1;
         pushData.color[1]  = 0;
         pushData.color[2]  = 1;
         pushData.color[3]  = 1;
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4,
-                           reinterpret_cast<void*>(&pushData));
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
-                           VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4,
-                           reinterpret_cast<void*>(&pushData.color));
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushData), reinterpret_cast<void*>(&pushData));
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
 #if 1
-        pushData.offset[0] = .8f;
-        pushData.offset[1] = .4f;
+        pushData.model = glm::translate(glm::mat4(1), {-1,-1,0});
         pushData.color[0]  = 1;
         pushData.color[1]  = 1;
         pushData.color[2]  = 1;

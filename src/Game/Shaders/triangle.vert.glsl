@@ -3,9 +3,10 @@
 //
 #version 450
 
-layout( push_constant ) uniform constants {
-    vec2 offset;
-    vec2 size;
+layout( push_constant, std140 ) uniform constants {
+    mat4 projection;
+    mat4 model;
+    vec4 color;
 } push;
 
 vec4 vertices[3] = {
@@ -15,5 +16,5 @@ vec4 vertices[3] = {
 };
 
 void main() {
-    gl_Position = vertices[gl_VertexIndex] * vec4(push.size.xy, 1, 1) + vec4(push.offset.xy, 1, 1);
+    gl_Position = push.projection * push.model * vertices[gl_VertexIndex];
 }

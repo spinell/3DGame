@@ -48,11 +48,14 @@ target_link_libraries(Game
         Vulkan::Vulkan
         Vulkan::Headers
         unofficial::spirv-reflect
+        glm::glm-header-only
 )
 
 target_compile_definitions(Game
     PRIVATE
         VK_USE_PLATFORM_WIN32_KHR
+        GLM_FORCE_RADIANS
+        GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
 

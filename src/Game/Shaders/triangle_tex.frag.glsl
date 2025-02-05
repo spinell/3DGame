@@ -9,10 +9,11 @@ layout (location = 0) out vec4 outColor;
 layout (binding = 0, set = 0) uniform sampler2D sampler0;
 
 layout( set=0, binding=1 ) uniform constants {
-    vec2 offset;
-    vec2 size;
+    mat4 projection;
+    mat4 model;
     vec4 color;
 };
+
 
 void main()
 {
