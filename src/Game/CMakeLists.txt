@@ -7,6 +7,8 @@ add_executable(Game
     TestLayer.cpp
     SpirV/SpirvReflection.h
     SpirV/SpirvReflection.cpp
+    Camera.h
+    Camera.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp

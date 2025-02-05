@@ -10,6 +10,7 @@ layout (binding = 0, set = 0) uniform sampler2D sampler0;
 
 layout( set=0, binding=1 ) uniform constants {
     mat4 projection;
+    mat4 view;
     mat4 model;
     vec4 color;
 };

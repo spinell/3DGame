@@ -5,6 +5,7 @@
 #include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanUtils.h"
+#include "Camera.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -113,6 +114,7 @@ VulkanDescriptorPool descriptorPool;
 VkDescriptorSet      descriptorSet;
 struct PushData {
     glm::mat4 projection;
+    glm::mat4 view;
     glm::mat4 model;
     float color[4];
 };
@@ -226,6 +228,26 @@ void TestLayer1::onDetach() {
 }
 
 void TestLayer1::onUpdate(float timeStep) {
+    static Engine::Camera camera(20, 20);
+
+    static glm::vec3 position(0);
+    if(Engine::Input::IsKeyDown(Engine::KeyCode::W)) {
+        position +=glm::vec3(0, 10, 0) * timeStep;
+    }
+    if(Engine::Input::IsKeyDown(Engine::KeyCode::S)) {
+        position -=glm::vec3(0, 10, 0) * timeStep;
+    }
+    if(Engine::Input::IsKeyDown(Engine::KeyCode::A)) {
+        position -=glm::vec3(10, 0, 0) * timeStep;
+    }
+    if(Engine::Input::IsKeyDown(Engine::KeyCode::D)) {
+        position +=glm::vec3(10, 0, 0) * timeStep;
+    }
+    if(Engine::Input::IsKeyPressed(Engine::KeyCode::Q)) {
+        camera.setProjection(200, 200);
+    }
+    camera.setPosition(position);
+
     // start command buffer
     {
         VkCommandBufferUsageFlags flags{};
@@ -324,7 +346,8 @@ void TestLayer1::onUpdate(float timeStep) {
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
         PushData pushData;
-        pushData.projection = glm::ortho(-20.f, 20.f, -20.f, 20.f, 0.f, 1.f);
+        pushData.projection = camera.getProjectionMatrix();
+        pushData.view = camera.getViewMatrix();
         pushData.model = glm::translate(glm::mat4(1), {1,1,0});
         pushData.color[0]  = 1;
         pushData.color[1]  = 0;

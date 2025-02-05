@@ -5,6 +5,7 @@
 
 layout( push_constant, std140 ) uniform constants {
     mat4 projection;
+    mat4 view;
     mat4 model;
     vec4 color;
 } push;
@@ -16,5 +17,5 @@ vec4 vertices[3] = {
 };
 
 void main() {
-    gl_Position = push.projection * push.model * vertices[gl_VertexIndex];
+    gl_Position = push.projection * push.view * push.model * vertices[gl_VertexIndex];
 }
