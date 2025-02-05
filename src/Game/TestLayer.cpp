@@ -23,6 +23,69 @@
 
 #include <array>
 
+Texture createCheckBoardTexture() {
+    Texture texture = VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM);
+
+    VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
+    VkDeviceSize    imageSize     = texture.width * texture.height * 4;
+    auto            stagingBuffer = VulkanContext::createBuffer(
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    void* ptr{};
+    vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
+    for (uint32_t row = 0; row < texture.height; row++) {
+        for (uint32_t col = 0; col < texture.width; col++) {
+            auto* color = (char*)ptr;
+            if (col % 2) {
+                color[0] = 255;
+                color[1] = 0;
+                color[2] = 255;
+                color[3] = 255;
+            } else {
+                color[0] = 0;
+                color[1] = 0;
+                color[2] = 255;
+                color[3] = 255;
+            }
+            ptr = (char*)ptr + 4;
+        }
+    }
+    vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
+
+    VulkanUtils::transitionImageLayout(
+        cmd, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+    VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image, static_cast<uint32_t>(texture.width),
+                      static_cast<uint32_t>(texture.height));
+
+#if 0
+    VkImageSubresourceRange sr{};
+    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    sr.baseMipLevel   = 0;
+    sr.levelCount     = 1;
+    sr.baseArrayLayer = 0;
+    sr.layerCount     = 1;
+    VkClearColorValue cc;
+    cc.float32[0] = 0;
+    cc.float32[1] = 1;
+    cc.float32[2] = 0;
+    cc.float32[3] = 1;
+    vkCmdClearColorImage(cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &cc, 1, &sr);
+#endif
+
+    VulkanUtils::transitionImageLayout(
+        cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT);
+    VulkanContext::endSingleTimeCommands(cmd);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer, stagingBuffer.allocation);
+
+    return texture;
+};
+
 struct FrameData {
     VkCommandPool   commandPool;
     VkCommandBuffer commandBuffer;
@@ -120,9 +183,11 @@ void TestLayer1::onAttach() {
 
     descriptorSet = descriptorPool.allocate(triangleTexPipeline.descriptorSetLayout[0]);
 
-    texture        = VulkanContext::createTexture();
-    uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    texture        = createCheckBoardTexture();
+    uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
+                                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
+                                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 }
 
 void TestLayer1::onDetach() {

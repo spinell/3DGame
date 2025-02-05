@@ -787,13 +787,13 @@ Buffer createBuffer(VkBufferUsageFlags    usageFlags,
     return buffer;
 }
 
-Texture createTexture() noexcept {
+Texture createTexture(uint32_t width, uint32_t height, VkFormat format) noexcept {
     Texture texture;
+    texture.width = width;
+    texture.height = height;
 
-    // TODO: Make this dynamic
-    const VkFormat              format    = VK_FORMAT_R8G8B8A8_UNORM;
-    const VkSampleCountFlagBits nbSamples = VK_SAMPLE_COUNT_1_BIT;
-    const VkExtent3D            extent    = {10, 10, 1};
+    const VkSampleCountFlagBits nbSamples = VK_SAMPLE_COUNT_1_BIT; // TODO: Make this dynamic
+    const VkExtent3D            extent    = {width, height, 1};
 
     //
     // Create the image
@@ -874,62 +874,6 @@ Texture createTexture() noexcept {
     samplerCreateInfo.unnormalizedCoordinates;
     VK_CHECK(vkCreateSampler(sDevice, &samplerCreateInfo, nullptr, &texture.sampler));
 
-    VkCommandBuffer cmd       = beginSingleTimeCommands();
-    VkDeviceSize    imageSize = extent.width * extent.height * 4;
-    auto            stagingBuffer =
-        createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
-                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    void* ptr{};
-    vmaMapMemory(sVmaAllocator, stagingBuffer.allocation, &ptr);
-    for (uint32_t row = 0; row < extent.height; row++) {
-        for (uint32_t col = 0; col < extent.width; col++) {
-            auto* color = (char*)ptr;
-            if (col % 2) {
-                color[0] = 255;
-                color[1] = 0;
-                color[2] = 255;
-                color[3] = 255;
-            } else {
-                color[0] = 0;
-                color[1] = 0;
-                color[2] = 255;
-                color[3] = 255;
-            }
-            ptr = (char*)ptr + 4;
-        }
-    }
-    vmaUnmapMemory(sVmaAllocator, stagingBuffer.allocation);
-
-    VulkanUtils::transitionImageLayout(
-        cmd, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT);
-
-    copyBufferToImage(cmd, stagingBuffer.buffer, texture.image, static_cast<uint32_t>(extent.width),
-                      static_cast<uint32_t>(extent.height));
-
-#if 0
-    VkImageSubresourceRange sr{};
-    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    sr.baseMipLevel   = 0;
-    sr.levelCount     = 1;
-    sr.baseArrayLayer = 0;
-    sr.layerCount     = 1;
-    VkClearColorValue cc;
-    cc.float32[0] = 0;
-    cc.float32[1] = 1;
-    cc.float32[2] = 0;
-    cc.float32[3] = 1;
-    vkCmdClearColorImage(cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &cc, 1, &sr);
-#endif
-
-    VulkanUtils::transitionImageLayout(
-        cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_2_SHADER_READ_BIT);
-    endSingleTimeCommands(cmd);
-    vmaDestroyBuffer(sVmaAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
     return texture;
 }
 
