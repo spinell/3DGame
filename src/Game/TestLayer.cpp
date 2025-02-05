@@ -2,8 +2,8 @@
 
 #include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
-#include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanDescriptorPool.h"
+#include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanUtils.h"
 
 #include <Engine/Application.h>
@@ -41,8 +41,9 @@ GraphicPipeline  triangleTexPipeline;
 Buffer           uniformBuffer;
 Buffer           uniformBuffer2;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
-Texture texture;
+Texture              texture;
 VulkanDescriptorPool descriptorPool;
+VkDescriptorSet      descriptorSet;
 struct PushData {
     float offset[2];
     float size[2];
@@ -117,9 +118,11 @@ void TestLayer1::onAttach() {
     triangleTexPipeline =
         VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
 
-    texture       = VulkanContext::createTexture();
-    uniformBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512);
-    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512);
+    descriptorSet = descriptorPool.allocate(triangleTexPipeline.descriptorSetLayout[0]);
+
+    texture        = VulkanContext::createTexture();
+    uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 }
 
 void TestLayer1::onDetach() {
@@ -142,14 +145,9 @@ void TestLayer1::onDetach() {
     vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleTexShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleTexShader.shaderModule, nullptr);
 
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), pipeline.pipelineLayout, nullptr);
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipeline.pipelineLayout, nullptr);
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), triangleTexPipeline.pipelineLayout,
-                            nullptr);
-
-    vkDestroyPipeline(VulkanContext::getDevice(), trianglePipeline.pipeline, nullptr);
-    vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
-    vkDestroyPipeline(VulkanContext::getDevice(), triangleTexPipeline.pipeline, nullptr);
+    pipeline.destroy();
+    trianglePipeline.destroy();
+    triangleTexPipeline.destroy();
     delete vulkanSwapchain;
     VulkanContext::Shutdown();
 }
@@ -311,10 +309,20 @@ void TestLayer1::onUpdate(float timeStep) {
             wWriteDescriptorSet[1].descriptorCount = 1;
             wWriteDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             wWriteDescriptorSet[1].pBufferInfo     = &descriptorBufferInfo;
+#if 0
             vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                       triangleTexPipeline.pipelineLayout, 0 /*setIndex*/,
                                       wWriteDescriptorSet.size() /*count*/,
                                       wWriteDescriptorSet.data());
+#else
+            wWriteDescriptorSet[0].dstSet = descriptorSet;
+            wWriteDescriptorSet[1].dstSet = descriptorSet;
+            vkUpdateDescriptorSets(VulkanContext::getDevice(), wWriteDescriptorSet.size(),
+                                   wWriteDescriptorSet.data(), 0, nullptr);
+            vkCmdBindDescriptorSets(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    triangleTexPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
+                                    &descriptorSet, 0, nullptr);
+#endif
         }
 
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);

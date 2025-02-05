@@ -11,8 +11,13 @@ struct Shader {
     std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
 };
 struct GraphicPipeline {
-    VkPipeline       pipeline{};
-    VkPipelineLayout pipelineLayout{};
+    VkPipeline                         pipeline{};
+    VkPipelineLayout                   pipelineLayout{};
+    std::vector<VkDescriptorSetLayout> descriptorSetLayout;
+    std::vector<VkPushConstantRange>   pushConstantRanges;
+
+    void destroy();
+
 };
 struct Buffer {
     VkBuffer      buffer{VK_NULL_HANDLE};
@@ -50,7 +55,7 @@ bool isDeviceExtensionSupported();
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert, Shader frag);
 
-[[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags usageFlags, uint64_t sizeInByte) noexcept;
+[[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags usageFlags, uint64_t sizeInByte, VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
 [[nodiscard]] Texture createTexture() noexcept;
 
 } // namespace VulkanContext

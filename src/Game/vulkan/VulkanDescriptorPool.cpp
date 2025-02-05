@@ -73,7 +73,7 @@ VkDescriptorSet VulkanDescriptorPool::allocate(VkDescriptorSetLayout setLayout) 
         .pNext              = nullptr,
         .descriptorPool     = mPool,
         .descriptorSetCount = 1,
-        .pSetLayouts        = nullptr};
+        .pSetLayouts        = &setLayout};
     VkDescriptorSet descriptorSet{};
     auto            result =
         vkAllocateDescriptorSets(VulkanContext::getDevice(), &allocateInfo, &descriptorSet);
