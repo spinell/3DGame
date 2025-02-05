@@ -64,6 +64,6 @@ void                          copyBufferToImage(
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
                                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
-[[nodiscard]] Texture createTexture(uint32_t width, uint32_t height, VkFormat format) noexcept;
+[[nodiscard]] Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usageFlags) noexcept;
 
 } // namespace VulkanContext

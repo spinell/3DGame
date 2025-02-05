@@ -24,7 +24,7 @@
 #include <array>
 
 Texture createCheckBoardTexture() {
-    Texture texture = VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM);
+    Texture texture = VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
     VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
     VkDeviceSize    imageSize     = texture.width * texture.height * 4;
@@ -105,6 +105,7 @@ Buffer           uniformBuffer;
 Buffer           uniformBuffer2;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture              texture;
+Texture              depthBuffer;
 VulkanDescriptorPool descriptorPool;
 VkDescriptorSet      descriptorSet;
 struct PushData {
@@ -184,6 +185,7 @@ void TestLayer1::onAttach() {
     descriptorSet = descriptorPool.allocate(triangleTexPipeline.descriptorSetLayout[0]);
 
     texture        = createCheckBoardTexture();
+    depthBuffer    = VulkanContext::createTexture(vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height, VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
                                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
@@ -202,6 +204,9 @@ void TestLayer1::onDetach() {
     vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
+
+    vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
+    vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
 
     vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
@@ -252,24 +257,30 @@ void TestLayer1::onUpdate(float timeStep) {
 
     // start render pass
     {
-        VkClearValue clearValue;
-        clearValue.color.float32[0] = 1;
-        clearValue.color.float32[1] = 0;
-        clearValue.color.float32[2] = 0;
-        clearValue.color.float32[3] = 1;
-
-        VkRenderingAttachmentInfo colorAttachmentInfo{};
-        colorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        colorAttachmentInfo.pNext = 0;
-        colorAttachmentInfo.imageView =
+        VkRenderingAttachmentInfo colorAttachmentInfo[1]{};
+        colorAttachmentInfo[0].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        colorAttachmentInfo[0].pNext = 0;
+        colorAttachmentInfo[0].imageView =
             vulkanSwapchain->getImageViews()[vulkanSwapchain->getCurrentBackImageIndex()];
-        colorAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        colorAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
-        colorAttachmentInfo.resolveImageView   = nullptr;
-        colorAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachmentInfo.loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachmentInfo.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachmentInfo.clearValue         = clearValue;
+        colorAttachmentInfo[0].imageLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorAttachmentInfo[0].resolveMode        = VK_RESOLVE_MODE_NONE;
+        colorAttachmentInfo[0].resolveImageView   = nullptr;
+        colorAttachmentInfo[0].resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachmentInfo[0].loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachmentInfo[0].storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachmentInfo[0].clearValue.color   = {{1.0f, 0.0f, 1.0f, 1.0f}};
+
+        VkRenderingAttachmentInfo depthAttachmentInfo{};
+        depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        depthAttachmentInfo.pNext = 0;
+        depthAttachmentInfo.imageView = depthBuffer.view;
+        depthAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depthAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
+        depthAttachmentInfo.resolveImageView   = nullptr;
+        depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachmentInfo.loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachmentInfo.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
+        depthAttachmentInfo.clearValue.depthStencil= {1.0f, 0};
 
         VkRenderingInfo info{};
         info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -280,8 +291,8 @@ void TestLayer1::onUpdate(float timeStep) {
         info.layerCount           = 1;
         info.viewMask             = 0;
         info.colorAttachmentCount = 1;
-        info.pColorAttachments    = &colorAttachmentInfo;
-        info.pDepthAttachment     = nullptr;
+        info.pColorAttachments    = colorAttachmentInfo;
+        info.pDepthAttachment     = &depthAttachmentInfo;
         info.pStencilAttachment   = nullptr;
         vkCmdBeginRendering(frameData.commandBuffer, &info);
     }

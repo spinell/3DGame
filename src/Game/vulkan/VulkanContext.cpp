@@ -539,7 +539,7 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag) {
     renderingCreateInfo.viewMask                = 0;
     renderingCreateInfo.colorAttachmentCount    = 1; // FIXME
     renderingCreateInfo.pColorAttachmentFormats = format.data();
-    renderingCreateInfo.depthAttachmentFormat   = VK_FORMAT_UNDEFINED;
+    renderingCreateInfo.depthAttachmentFormat   = VK_FORMAT_D24_UNORM_S8_UINT;
     renderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
     //============================================================================
@@ -787,7 +787,7 @@ Buffer createBuffer(VkBufferUsageFlags    usageFlags,
     return buffer;
 }
 
-Texture createTexture(uint32_t width, uint32_t height, VkFormat format) noexcept {
+Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usageFlags) noexcept {
     Texture texture;
     texture.width = width;
     texture.height = height;
@@ -809,7 +809,7 @@ Texture createTexture(uint32_t width, uint32_t height, VkFormat format) noexcept
     imageCreateInfo.arrayLayers = 1;
     imageCreateInfo.samples     = nbSamples;
     imageCreateInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
-    imageCreateInfo.usage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageCreateInfo.usage       = usageFlags;
     imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageCreateInfo.queueFamilyIndexCount = 0;
     imageCreateInfo.pQueueFamilyIndices   = nullptr;
@@ -842,7 +842,7 @@ Texture createTexture(uint32_t width, uint32_t height, VkFormat format) noexcept
     ivCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
     ivCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
     ivCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivCreateInfo.subresourceRange.aspectMask     = format == VK_FORMAT_D24_UNORM_S8_UINT ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
     ivCreateInfo.subresourceRange.baseMipLevel   = 0;
     ivCreateInfo.subresourceRange.levelCount     = 1;
     ivCreateInfo.subresourceRange.baseArrayLayer = 0;
