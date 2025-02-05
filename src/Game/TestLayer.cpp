@@ -1,7 +1,9 @@
 #include "TestLayer.h"
 
+#include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanSwapchain.h"
+#include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanUtils.h"
 
 #include <Engine/Application.h>
@@ -14,11 +16,11 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
-#include <spirv_triangle_vert_glsl.h>
 #include <spirv_triangle_frag_glsl.h>
-#include <spirv_triangle_tex_vert_glsl.h>
 #include <spirv_triangle_tex_frag_glsl.h>
-#include "Spirv/SpirvReflection.h"
+#include <spirv_triangle_tex_vert_glsl.h>
+#include <spirv_triangle_vert_glsl.h>
+
 #include <array>
 
 struct FrameData {
@@ -37,10 +39,11 @@ GraphicPipeline  pipeline;
 GraphicPipeline  trianglePipeline;
 GraphicPipeline  triangleTexPipeline;
 Buffer           uniformBuffer;
+Buffer           uniformBuffer2;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture texture;
-
-struct PushData{
+VulkanDescriptorPool descriptorPool;
+struct PushData {
     float offset[2];
     float size[2];
     float color[4];
@@ -50,6 +53,7 @@ TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
+    descriptorPool.init();
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
                                               SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
@@ -99,29 +103,34 @@ void TestLayer1::onAttach() {
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
 
-    vertShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
-    fragShader     = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
-    pipeline       = VulkanContext::createGraphicPipeline(vertShader, fragShader);
+    vertShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
+    fragShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
+    pipeline   = VulkanContext::createGraphicPipeline(vertShader, fragShader);
 
     vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl);
     fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
 
-    trianglePipeline       = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader);
+    trianglePipeline = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader);
 
     vertTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_vert_glsl);
     fragTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_frag_glsl);
-    triangleTexPipeline   = VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
+    triangleTexPipeline =
+        VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
 
     texture       = VulkanContext::createTexture();
     uniformBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512);
+    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512);
 }
 
 void TestLayer1::onDetach() {
     vkDeviceWaitIdle(VulkanContext::getDevice());
-
+    descriptorPool.destroy();
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
 
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer.buffer, uniformBuffer.allocation);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer.buffer,
+                     uniformBuffer.allocation);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer2.buffer,
+                     uniformBuffer2.allocation);
     vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
@@ -135,7 +144,8 @@ void TestLayer1::onDetach() {
 
     vkDestroyPipelineLayout(VulkanContext::getDevice(), pipeline.pipelineLayout, nullptr);
     vkDestroyPipelineLayout(VulkanContext::getDevice(), trianglePipeline.pipelineLayout, nullptr);
-    vkDestroyPipelineLayout(VulkanContext::getDevice(), triangleTexPipeline.pipelineLayout, nullptr);
+    vkDestroyPipelineLayout(VulkanContext::getDevice(), triangleTexPipeline.pipelineLayout,
+                            nullptr);
 
     vkDestroyPipeline(VulkanContext::getDevice(), trianglePipeline.pipeline, nullptr);
     vkDestroyPipeline(VulkanContext::getDevice(), pipeline.pipeline, nullptr);
@@ -216,85 +226,100 @@ void TestLayer1::onUpdate(float timeStep) {
     // render stuff
     {
         VkViewport viewport;
-        viewport.x = 0;
-        viewport.y = 0;
-        viewport.width = vulkanSwapchain->getSize().width;
-        viewport.height = vulkanSwapchain->getSize().height;
+        viewport.x        = 0;
+        viewport.y        = 0;
+        viewport.width    = vulkanSwapchain->getSize().width;
+        viewport.height   = vulkanSwapchain->getSize().height;
         viewport.minDepth = 0;
         viewport.maxDepth = 1;
         vkCmdSetViewportWithCount(frameData.commandBuffer, 1, &viewport);
 
         VkRect2D rect;
-        rect.offset.x = 0;
-        rect.offset.y = 0;
-        rect.extent.width= vulkanSwapchain->getSize().width;
-        rect.extent.height= vulkanSwapchain->getSize().height;
+        rect.offset.x      = 0;
+        rect.offset.y      = 0;
+        rect.extent.width  = vulkanSwapchain->getSize().width;
+        rect.extent.height = vulkanSwapchain->getSize().height;
         vkCmdSetScissorWithCount(frameData.commandBuffer, 1, &rect);
 
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          pipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
-
         PushData pushData;
-        pushData.offset[0]= -.8f;
-        pushData.offset[1]= -.4f;
-        pushData.size[0]  = .5f;
-        pushData.size[1]  = .5f;
-        pushData.color[0] = 1;
-        pushData.color[1] = 0;
-        pushData.color[2] = 1;
-        pushData.color[3] = 1;
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,    0, sizeof(float) * 4, reinterpret_cast<void*>(&pushData));
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4, reinterpret_cast<void*>(&pushData.color));
+        pushData.offset[0] = -.8f;
+        pushData.offset[1] = -.4f;
+        pushData.size[0]   = .5f;
+        pushData.size[1]   = .5f;
+        pushData.color[0]  = 1;
+        pushData.color[1]  = 0;
+        pushData.color[2]  = 1;
+        pushData.color[3]  = 1;
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4,
+                           reinterpret_cast<void*>(&pushData));
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
+                           VK_SHADER_STAGE_FRAGMENT_BIT, 16, sizeof(float) * 4,
+                           reinterpret_cast<void*>(&pushData.color));
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline.pipeline);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
 #if 1
-        pushData.offset[0]=  .8f;
-        pushData.offset[1]=  .4f;
-        pushData.color[0] = 1;
-        pushData.color[1] = 1;
-        pushData.color[2] = 1;
-        pushData.color[3] = 1;
+        pushData.offset[0] = .8f;
+        pushData.offset[1] = .4f;
+        pushData.color[0]  = 1;
+        pushData.color[1]  = 1;
+        pushData.color[2]  = 1;
+        pushData.color[3]  = 1;
 
         void* ptr;
         vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation, &ptr);
         std::memcpy(ptr, &pushData, sizeof(pushData));
         vmaUnmapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation);
 
-        VkDescriptorImageInfo descriptorImageInfo;
-        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-        descriptorImageInfo.imageView = texture.view;
-        descriptorImageInfo.sampler = texture.sampler;
+        vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer2.allocation, &ptr);
+        std::memcpy(ptr, &pushData, sizeof(pushData));
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), uniformBuffer2.allocation);
 
-        VkDescriptorBufferInfo descriptorBufferInfo;
-        descriptorBufferInfo.buffer = uniformBuffer.buffer;
-        descriptorBufferInfo.offset = 0;
-        descriptorBufferInfo.range  = 512;
+        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR =
+            (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanContext::getIntance(),
+                                                                 "vkCmdPushDescriptorSetKHR");
 
-        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanContext::getIntance(),"vkCmdPushDescriptorSetKHR");
+        // update set 0
+        {
+            VkDescriptorImageInfo descriptorImageInfo;
+            descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+            descriptorImageInfo.imageView   = texture.view;
+            descriptorImageInfo.sampler     = texture.sampler;
 
-        std::array<VkWriteDescriptorSet, 2> wWriteDescriptorSet{};
-        wWriteDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wWriteDescriptorSet[0].dstSet = 0; // dstSet member is ignored for vkCmdPushDescriptorSetKHR.
-        wWriteDescriptorSet[0].dstBinding = 0;
-        wWriteDescriptorSet[0].descriptorCount = 1;
-        wWriteDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        wWriteDescriptorSet[0].pImageInfo = &descriptorImageInfo;
+            VkDescriptorBufferInfo descriptorBufferInfo;
+            descriptorBufferInfo.buffer = uniformBuffer.buffer;
+            descriptorBufferInfo.offset = 0;
+            descriptorBufferInfo.range  = 512;
 
-        wWriteDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wWriteDescriptorSet[1].dstSet = 0; // dstSet member is ignored for vkCmdPushDescriptorSetKHR.
-        wWriteDescriptorSet[1].dstBinding = 1;
-        wWriteDescriptorSet[1].descriptorCount = 1;
-        wWriteDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        wWriteDescriptorSet[1].pBufferInfo = &descriptorBufferInfo;
+            std::array<VkWriteDescriptorSet, 2> wWriteDescriptorSet{};
+            wWriteDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wWriteDescriptorSet[0].dstBinding      = 0;
+            wWriteDescriptorSet[0].descriptorCount = 1;
+            wWriteDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            wWriteDescriptorSet[0].pImageInfo      = &descriptorImageInfo;
 
-        vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipelineLayout, 0/*setIndex*/, wWriteDescriptorSet.size()/*count*/, wWriteDescriptorSet.data());
+            wWriteDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            wWriteDescriptorSet[1].dstBinding      = 1;
+            wWriteDescriptorSet[1].descriptorCount = 1;
+            wWriteDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            wWriteDescriptorSet[1].pBufferInfo     = &descriptorBufferInfo;
+            vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      triangleTexPipeline.pipelineLayout, 0 /*setIndex*/,
+                                      wWriteDescriptorSet.size() /*count*/,
+                                      wWriteDescriptorSet.data());
+        }
 
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleTexPipeline.pipeline);
+        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          triangleTexPipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 #endif
     }

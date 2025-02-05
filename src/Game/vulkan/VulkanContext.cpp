@@ -186,9 +186,10 @@ bool Initialize() {
     vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 
     VkPhysicalDeviceVulkan13Features vulkan13Features{};
-    vulkan13Features.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    vulkan13Features.dynamicRendering = true;
-    vulkan13Features.synchronization2 = true;
+    vulkan13Features.sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    vulkan13Features.dynamicRendering   = true;
+    vulkan13Features.synchronization2   = true;
+    vulkan13Features.inlineUniformBlock = true;
 
     // chain features
     deviceFeatures.pNext   = &vulkan12Features;
@@ -201,6 +202,7 @@ bool Initialize() {
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+    // deviceExtensions.push_back(VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME);
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -348,15 +350,15 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
     // remove duplicate binding + merge shader stage
     std::vector<VkDescriptorSetLayoutBinding> uniqueBindings;
     for(auto& binding : mergedBindings) {
-        auto it = std::ranges::find_if(uniqueBindings, [&binding](const VkDescriptorSetLayoutBinding& b){ return b.binding == binding.binding; });
-        if(it == uniqueBindings.end()) {
-            uniqueBindings.push_back(binding);
-        }else {
-            it->stageFlags |= binding.stageFlags;
+            auto it = std::ranges::find_if(uniqueBindings, [&binding](const VkDescriptorSetLayoutBinding& b){ return b.binding == binding.binding; });
+            if(it == uniqueBindings.end()) {
+                uniqueBindings.push_back(binding);
+            }else {
+                it->stageFlags |= binding.stageFlags;
+            }
         }
-    }
 
-   VkDescriptorSetLayout descriptorSetLayout{};
+    VkDescriptorSetLayout descriptorSetLayout{};
     if (uniqueBindings.size()) {
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -365,8 +367,8 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
             VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
         descriptorSetLayoutCreateInfo.bindingCount = uniqueBindings.size();
         descriptorSetLayoutCreateInfo.pBindings    = uniqueBindings.data();
-        vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr,
-                                    &descriptorSetLayout);
+            vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr,
+                                        &descriptorSetLayout);
     }
 
     return createPipelineLayout(descriptorSetLayout != nullptr ? 1 : 0, &descriptorSetLayout,
