@@ -61,6 +61,7 @@ target_link_libraries(Game
         Vulkan::Headers
         unofficial::spirv-reflect
         glm::glm-header-only
+        EnTT::EnTT
 )
 
 target_compile_definitions(Game

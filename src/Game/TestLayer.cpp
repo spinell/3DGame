@@ -28,6 +28,7 @@
 #include <spirv_triangle_tex_frag_glsl.h>
 #include <spirv_triangle_tex_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
+#include <entt/entt.hpp>
 
 #include <array>
 
