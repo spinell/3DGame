@@ -101,10 +101,10 @@ struct FrameData {
 };
 FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
-Shader           vertShader;
-Shader           fragShader;
+Shader           vertFullScreenShader;
+Shader           fragFullScreenShader;
+GraphicPipeline  pipelineFullScreen;
 
-GraphicPipeline pipeline;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture              texture;
 Texture              depthBuffer;
@@ -211,9 +211,9 @@ void TestLayer1::onAttach() {
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
 
-    vertShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
-    fragShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
-    pipeline   = VulkanContext::createGraphicPipeline(vertShader, fragShader);
+    vertFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
+    fragFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
+    pipelineFullScreen   = VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
 
     texture     = createCheckBoardTexture();
     depthBuffer = VulkanContext::createTexture(
@@ -240,10 +240,14 @@ void TestLayer1::onDetach() {
     vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
 
+    vmaDestroyImage(VulkanContext::getVmaAllocator(), depthBuffer.image, depthBuffer.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
 
-    pipeline.destroy();
+    vkDestroyShaderModule(VulkanContext::getDevice(), vertFullScreenShader.shaderModule, nullptr);
+    vkDestroyShaderModule(VulkanContext::getDevice(), fragFullScreenShader.shaderModule, nullptr);
+    pipelineFullScreen.destroy();
+
     delete vulkanSwapchain;
     Renderer::Shutdown();
     VulkanContext::Shutdown();
@@ -349,7 +353,7 @@ void TestLayer1::onUpdate(float timeStep) {
         // draw back ground
         {
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              pipeline.pipeline);
+                              pipelineFullScreen.pipeline);
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
         }
 

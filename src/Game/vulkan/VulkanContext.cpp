@@ -551,16 +551,16 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepth
 
     VkVertexInputBindingDescription   vertexInputBindings[8]{};
     VkVertexInputAttributeDescription vertexInputAttribute[8]{};
+    VkVertexInputBindingDescription inputBinding = {
+        0, sizeof(float) * 11, VK_VERTEX_INPUT_RATE_VERTEX
+    };
+    VkVertexInputAttributeDescription input[4] = {
+        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
+        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 3}, // normal
+        {2, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 6}, // tangent
+        {3, 0, VK_FORMAT_R32G32_SFLOAT,    4 * 9}  // tex
+    };
     if(vertexLayout) {
-        VkVertexInputBindingDescription inputBinding = {
-            0, sizeof(float) * 11, VK_VERTEX_INPUT_RATE_VERTEX
-        };
-        VkVertexInputAttributeDescription input[4] = {
-            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
-            {1, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 3}, // normal
-            {2, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 6}, // tangent
-            {3, 0, VK_FORMAT_R32G32_SFLOAT,    4 * 9}  // tex
-        };
         vertexInputInfo.vertexBindingDescriptionCount   = 1;
         vertexInputInfo.pVertexBindingDescriptions      = &inputBinding;
         vertexInputInfo.vertexAttributeDescriptionCount = 4;
