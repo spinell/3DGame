@@ -4,6 +4,7 @@
 #include "CameraController.h"
 #include "Mesh.h"
 #include "Renderer.h"
+
 #include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanDescriptorPool.h"
@@ -22,29 +23,10 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
-#include <spirv_mesh_frag_glsl.h>
-#include <spirv_mesh_vert_glsl.h>
-#include <spirv_triangle_frag_glsl.h>
-#include <spirv_triangle_tex_frag_glsl.h>
-#include <spirv_triangle_tex_vert_glsl.h>
-#include <spirv_triangle_vert_glsl.h>
-#include <entt/entt.hpp>
 
 #include <array>
 
-struct CTransform {
-    glm::vec3 position;
-    glm::vec3 scale;
-    glm::vec3 rotation;
-};
-struct CMesh {
-    Mesh mesh;
-};
-struct CMaterial {
-    glm::vec4 color;
-};
 
-entt::registry registry;
 
 Texture createCheckBoardTexture() {
     Texture texture =
@@ -113,7 +95,6 @@ Texture createCheckBoardTexture() {
     return texture;
 };
 
-
 struct FrameData {
     VkCommandPool   commandPool;
     VkCommandBuffer commandBuffer;
@@ -122,38 +103,27 @@ FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
 Shader           vertShader;
 Shader           fragShader;
-Shader          vertMeshShader;
-Shader          fragMeshShader;
-GraphicPipeline meshPipeline;
 
 GraphicPipeline pipeline;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture              texture;
 Texture              depthBuffer;
-VulkanDescriptorPool descriptorPool;
-VkDescriptorSet      meshPipelineDescriptorSet0;
-struct PushData {
-    glm::mat4 projection;
-    glm::mat4 view;
-    glm::mat4 model;
-    float     color[4];
-};
 
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
-
 
 TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
     Renderer::Init();
-    descriptorPool.init();
+    mSceneRenderer = new SceneRenderer();
 
-    auto meshCube = Mesh::CreateMeshCube(1.0f);
-    auto meshGrid = Mesh::CreateGrid(10.0f, 10.0f, 2.0f, 2.0f);
-    auto meshCylinder = Mesh::CreateCylinder(1, 1, 10, 10, 10);
-    auto meshSphere = Mesh::CreateSphere(1, 10, 10);
+
+    auto meshCube      = Mesh::CreateMeshCube(1.0f);
+    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2.0f, 2.0f);
+    auto meshCylinder  = Mesh::CreateCylinder(1, 1, 10, 10, 10);
+    auto meshSphere    = Mesh::CreateSphere(1, 10, 10);
     auto meshGeoSphere = Mesh::CreateGeoSphere(1, 10);
 
     meshs.push_back(meshCube);
@@ -163,35 +133,34 @@ void TestLayer1::onAttach() {
     meshs.push_back(meshGeoSphere);
 
     // floor
-    auto e = registry.create();
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshGrid;
-    registry.emplace<CMaterial>(e).color = {1.f, 1.f, 1.f, 1.0f};
-    registry.emplace<CTransform>(e).position = {0, 0, 0};
+    auto e                                   = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshGrid;
+    mRegistry.emplace<CMaterial>(e).color     = {1.f, 1.f, 1.f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {0, 0, 0};
 
     // cubes
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshCube;
-    registry.emplace<CMaterial>(e).color = {1.0f, 0.0f, 0.0f, 1.0f};
-    registry.emplace<CTransform>(e).position = {0, 0.5f, 0};
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshCube;
-    registry.emplace<CMaterial>(e).color = {1.0f, 1.0f, 1.0f, 1.0f};
-    registry.emplace<CTransform>(e).position = {-5, 0, 5};
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshCube;
-    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
-    registry.emplace<CTransform>(e).position = {-15, 0, 10};
+    e                                        = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+    mRegistry.emplace<CMaterial>(e).color     = {1.0f, 0.0f, 0.0f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {0, 0.5f, 0};
+    e                                        = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+    mRegistry.emplace<CMaterial>(e).color     = {1.0f, 1.0f, 1.0f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {-5, 0, 5};
+    e                                        = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {-15, 0, 10};
 
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshCylinder;
-    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
-    registry.emplace<CTransform>(e).position = {5, 5, 10};
+    e                                        = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
+    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {5, 5, 10};
 
-    e = registry.create();
-    registry.emplace<CMesh>(e).mesh = meshGeoSphere;
-    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
-    registry.emplace<CTransform>(e).position = {5, 5, 5};
+    e                                        = mRegistry.create();
+    mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
+    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
+    mRegistry.emplace<CTransform>(e).position = {5, 5, 5};
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -251,21 +220,7 @@ void TestLayer1::onAttach() {
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
         VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-    // Mesh pipeline
-    {
-        vertMeshShader = VulkanContext::createShaderModule(spirv_mesh_vert_glsl);
-        fragMeshShader = VulkanContext::createShaderModule(spirv_mesh_frag_glsl);
-        meshPipeline =
-            VulkanContext::createGraphicPipeline(vertMeshShader, fragMeshShader, true, true);
-        meshPipelineDescriptorSet0 = descriptorPool.allocate(meshPipeline.descriptorSetLayout[0]);
 
-        VulkanContext::setDebugObjectName((uint64_t)meshPipeline.pipeline, VK_OBJECT_TYPE_PIPELINE,
-                                          "meshPipeline");
-        VulkanContext::setDebugObjectName((uint64_t)meshPipeline.pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT,
-                                          "meshpipelineLayout");
-        VulkanContext::setDebugObjectName((uint64_t)meshPipelineDescriptorSet0, VK_OBJECT_TYPE_DESCRIPTOR_SET,
-                                          "meshPipelineDescriptorSet0");
-    }
 }
 
 void TestLayer1::onDetach() {
@@ -278,7 +233,7 @@ void TestLayer1::onDetach() {
                          m.indexBuffer.allocation);
     }
 
-    descriptorPool.destroy();
+    delete mSceneRenderer;
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
 
     vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
@@ -287,9 +242,6 @@ void TestLayer1::onDetach() {
 
     vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
-
-    vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
 
     pipeline.destroy();
     delete vulkanSwapchain;
@@ -397,55 +349,11 @@ void TestLayer1::onUpdate(float timeStep) {
         // draw back ground
         {
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline.pipeline);
+                              pipeline.pipeline);
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
-
         }
 
-        // render scene
-        {
-            vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-            vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              meshPipeline.pipeline);
-
-            VkDescriptorImageInfo descriptorImageInfo;
-            descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-            descriptorImageInfo.imageView   = texture.view;
-            descriptorImageInfo.sampler     = texture.sampler;
-
-            VkWriteDescriptorSet writeDescriptorSet{};
-            writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeDescriptorSet.dstSet          = meshPipelineDescriptorSet0;
-            writeDescriptorSet.dstBinding      = 0;
-            writeDescriptorSet.descriptorCount = 1;
-            writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            writeDescriptorSet.pImageInfo      = &descriptorImageInfo;
-
-            vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
-
-            PushData pushData;
-            pushData.projection = cameraController.getProjectonMatrix();
-            pushData.view       = cameraController.getViewMatrix();
-            auto view = registry.view<CTransform, CMesh, CMaterial>();
-            for(auto [entity, ctrans, cmesh, cmat]: view.each()) {
-
-                pushData.model    = glm::translate(glm::mat4(1), ctrans.position);
-                pushData.color[0] = cmat.color.x;
-                pushData.color[1] = cmat.color.y;
-                pushData.color[2] = cmat.color.z;
-                pushData.color[3] = cmat.color.w;
-
-                vkCmdBindDescriptorSets(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    meshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
-                                    &meshPipelineDescriptorSet0, 0, nullptr);
-
-                vkCmdPushConstants(frameData.commandBuffer, meshPipeline.pipelineLayout,
-                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                                    sizeof(pushData), reinterpret_cast<void*>(&pushData));
-
-                Renderer::DrawMesh(frameData.commandBuffer, cmesh.mesh);
-            }
-        }
+        mSceneRenderer->render(&mRegistry, frameData.commandBuffer, texture, cameraController.getProjectonMatrix(), cameraController.getViewMatrix());
     }
 
     // end render pass
