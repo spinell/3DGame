@@ -22,12 +22,12 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
+#include <spirv_mesh_frag_glsl.h>
+#include <spirv_mesh_vert_glsl.h>
 #include <spirv_triangle_frag_glsl.h>
 #include <spirv_triangle_tex_frag_glsl.h>
 #include <spirv_triangle_tex_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
-#include <spirv_mesh_vert_glsl.h>
-#include <spirv_mesh_frag_glsl.h>
 
 #include <array>
 
@@ -99,8 +99,8 @@ Texture createCheckBoardTexture() {
 };
 
 struct Mesh {
-    Buffer vertexBuffer;
-    Buffer indexBuffer;
+    Buffer   vertexBuffer;
+    Buffer   indexBuffer;
     uint32_t indexCount;
 };
 
@@ -113,7 +113,7 @@ Mesh createMeshCube() {
     const auto indexSize  = meshData.Indices.size() * sizeof(unsigned);
 
     Mesh mesh;
-    mesh.indexCount = meshData.Indices.size();
+    mesh.indexCount   = meshData.Indices.size();
     mesh.vertexBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexSize,
                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     mesh.indexBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexSize,
@@ -146,20 +146,21 @@ Shader           fragTriangleShader;
 Shader           vertTriangleTexShader;
 Shader           fragTriangleTexShader;
 
-Shader           vertMeshShader;
-Shader           fragMeshShader;
-GraphicPipeline  meshPipeline;
+Shader          vertMeshShader;
+Shader          fragMeshShader;
+GraphicPipeline meshPipeline;
 
-GraphicPipeline  pipeline;
-GraphicPipeline  trianglePipeline;
-GraphicPipeline  triangleTexPipeline;
-Buffer           uniformBuffer;
-Buffer           uniformBuffer2;
+GraphicPipeline pipeline;
+GraphicPipeline trianglePipeline;
+GraphicPipeline triangleTexPipeline;
+Buffer          uniformBuffer;
+Buffer          uniformBuffer2;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture              texture;
 Texture              depthBuffer;
 VulkanDescriptorPool descriptorPool;
 VkDescriptorSet      descriptorSet;
+VkDescriptorSet      meshPipelineDescriptorSet0;
 struct PushData {
     glm::mat4 projection;
     glm::mat4 view;
@@ -254,10 +255,20 @@ void TestLayer1::onAttach() {
                                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     // Mesh pipeline
-    vertMeshShader = VulkanContext::createShaderModule(spirv_mesh_vert_glsl);
-    fragMeshShader = VulkanContext::createShaderModule(spirv_mesh_frag_glsl);
-    meshPipeline =
-        VulkanContext::createGraphicPipeline(vertMeshShader, fragMeshShader, true, true);
+    {
+        vertMeshShader = VulkanContext::createShaderModule(spirv_mesh_vert_glsl);
+        fragMeshShader = VulkanContext::createShaderModule(spirv_mesh_frag_glsl);
+        meshPipeline =
+            VulkanContext::createGraphicPipeline(vertMeshShader, fragMeshShader, true, true);
+        meshPipelineDescriptorSet0 = descriptorPool.allocate(meshPipeline.descriptorSetLayout[0]);
+
+        VulkanContext::setDebugObjectName((uint64_t)meshPipeline.pipeline, VK_OBJECT_TYPE_PIPELINE,
+                                          "meshPipeline");
+        VulkanContext::setDebugObjectName((uint64_t)meshPipeline.pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                                          "meshpipelineLayout");
+        VulkanContext::setDebugObjectName((uint64_t)meshPipelineDescriptorSet0, VK_OBJECT_TYPE_DESCRIPTOR_SET,
+                                          "meshPipelineDescriptorSet0");
+    }
 }
 
 void TestLayer1::onDetach() {
@@ -453,25 +464,40 @@ void TestLayer1::onUpdate(float timeStep) {
             objects[0].color[2] = 0;
             objects[0].color[3] = 1;
             objects[1].model    = glm::translate(glm::mat4(1), {-10, 0, 10});
-            objects[1].color[0] = 0;
+            objects[1].color[0] = 1;
             objects[1].color[1] = 1;
-            objects[1].color[2] = 0;
+            objects[1].color[2] = 1;
             objects[1].color[3] = 1;
             objects[2].model    = glm::translate(glm::mat4(1), {-15, 0, 10});
-            objects[2].color[0] = 0;
-            objects[2].color[1] = 0;
-            objects[2].color[2] = 1;
+            objects[2].color[0] = 0.5f;
+            objects[2].color[1] = 0.5f;
+            objects[2].color[2] = 0.5f;
             objects[2].color[3] = 1;
 
             vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            meshPipeline.pipeline);
-
-
+                              meshPipeline.pipeline);
 
             VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(frameData.commandBuffer, 0, 1, &meshs[0].vertexBuffer.buffer, &offset);
-            vkCmdBindIndexBuffer(frameData.commandBuffer, meshs[0].indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
+            vkCmdBindVertexBuffers(frameData.commandBuffer, 0, 1, &meshs[0].vertexBuffer.buffer,
+                                   &offset);
+            vkCmdBindIndexBuffer(frameData.commandBuffer, meshs[0].indexBuffer.buffer, offset,
+                                 VK_INDEX_TYPE_UINT32);
+
+            VkDescriptorImageInfo descriptorImageInfo;
+            descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+            descriptorImageInfo.imageView   = texture.view;
+            descriptorImageInfo.sampler     = texture.sampler;
+
+            VkWriteDescriptorSet writeDescriptorSet{};
+            writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeDescriptorSet.dstSet          = meshPipelineDescriptorSet0;
+            writeDescriptorSet.dstBinding      = 0;
+            writeDescriptorSet.descriptorCount = 1;
+            writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            writeDescriptorSet.pImageInfo      = &descriptorImageInfo;
+
+            vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
 
             for (const auto& object : objects) {
                 pushData.model    = object.model;
@@ -480,16 +506,19 @@ void TestLayer1::onUpdate(float timeStep) {
                 pushData.color[2] = object.color.z;
                 pushData.color[3] = object.color.w;
 
+                vkCmdBindDescriptorSets(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    meshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
+                                    &meshPipelineDescriptorSet0, 0, nullptr);
+
                 vkCmdPushConstants(frameData.commandBuffer, meshPipeline.pipelineLayout,
-                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                                sizeof(pushData), reinterpret_cast<void*>(&pushData));
+                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                                   sizeof(pushData), reinterpret_cast<void*>(&pushData));
 
                 vkCmdDrawIndexed(frameData.commandBuffer, meshs[0].indexCount, 1, 0, 0, 0);
             }
-
         }
 
-#if 1
+#if 0
         pushData.model    = glm::translate(glm::mat4(1), {-1, -2, 0});
         pushData.color[0] = 1;
         pushData.color[1] = 1;

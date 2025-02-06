@@ -2,6 +2,7 @@
 #include "vulkan.h"
 
 #include <span>
+#include <string>
 #include <vector>
 
 struct Shader {
@@ -44,6 +45,8 @@ uint32_t         getGraphicQueueFamilyIndex();
 VkQueue          getGraphicQueue();
 VmaAllocator     getVmaAllocator();
 
+void setDebugObjectName(uint64_t objectHandle, VkObjectType objectType, std::string name);
+
 bool isLayerSupported();
 bool isInstanceExtensionSupported();
 bool isDeviceExtensionSupported();
@@ -61,8 +64,8 @@ void                          copyBufferToImage(
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert,
                                                      Shader frag,
-                                                     bool enableDepthTest = false,
-                                                     bool vertexLayout = false);
+                                                     bool   enableDepthTest = false,
+                                                     bool   vertexLayout    = false);
 
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,

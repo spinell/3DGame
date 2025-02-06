@@ -90,6 +90,7 @@
         "print": "cpp",
         "shared_mutex": "cpp",
         "cinttypes": "cpp",
-        "cstdarg": "cpp"
+        "cstdarg": "cpp",
+        "numbers": "cpp"
     }
 }

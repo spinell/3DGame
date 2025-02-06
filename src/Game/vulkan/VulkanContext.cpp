@@ -904,6 +904,22 @@ Texture createTexture(uint32_t          width,
     return texture;
 }
 
+
+void setDebugObjectName(uint64_t     objectHandle,
+                        VkObjectType objectType,
+                        std::string  name) {
+    auto func = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(sDevice, "vkSetDebugUtilsObjectNameEXT");
+    if(func){
+        VkDebugUtilsObjectNameInfoEXT nameInfo{};
+        nameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        nameInfo.pNext        = nullptr;
+        nameInfo.objectHandle = objectHandle;
+        nameInfo.objectType   = objectType;
+        nameInfo.pObjectName  = name.c_str();
+        func(sDevice, &nameInfo);
+    }
+}
+
 } // namespace VulkanContext
 
 void GraphicPipeline::destroy() {
