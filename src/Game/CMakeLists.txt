@@ -11,6 +11,8 @@ add_executable(Game
     Camera.cpp
     CameraController.h
     CameraController.cpp
+    GeometryGenerator.h
+    GeometryGenerator.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp
@@ -37,6 +39,8 @@ target_glsl_shaders(Game
         Shaders/triangle.frag.glsl
         Shaders/triangle_tex.vert.glsl
         Shaders/triangle_tex.frag.glsl
+        Shaders/mesh.vert.glsl
+        Shaders/mesh.frag.glsl
 )
 
 target_include_directories(Game

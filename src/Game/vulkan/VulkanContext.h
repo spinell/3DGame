@@ -61,7 +61,8 @@ void                          copyBufferToImage(
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
 [[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert,
                                                      Shader frag,
-                                                     bool   enableDepthTest = false);
+                                                     bool enableDepthTest = false,
+                                                     bool vertexLayout = false);
 
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
