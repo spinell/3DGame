@@ -515,7 +515,7 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
                                 nbPushRange, pushConstantRange.data());
 }
 
-GraphicPipeline createGraphicPipeline(Shader vert, Shader frag) {
+GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepthTest) {
     VkPipelineShaderStageCreateInfo shaderStages[2]{};
     shaderStages[0] = vert.stageCreateInfo;
     shaderStages[1] = frag.stageCreateInfo;
@@ -662,6 +662,11 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag) {
     // ==========================================================================
     VkPipelineDepthStencilStateCreateInfo dsStateCI{};
     dsStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    if (enableDepthTest) {
+        dsStateCI.depthTestEnable = true;
+        dsStateCI.depthCompareOp = VK_COMPARE_OP_LESS;
+        dsStateCI.depthWriteEnable = VK_TRUE;
+    }
 
     // =================================================================================
     //                                Blend states
@@ -787,9 +792,12 @@ Buffer createBuffer(VkBufferUsageFlags    usageFlags,
     return buffer;
 }
 
-Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usageFlags) noexcept {
+Texture createTexture(uint32_t          width,
+                      uint32_t          height,
+                      VkFormat          format,
+                      VkImageUsageFlags usageFlags) noexcept {
     Texture texture;
-    texture.width = width;
+    texture.width  = width;
     texture.height = height;
 
     const VkSampleCountFlagBits nbSamples = VK_SAMPLE_COUNT_1_BIT; // TODO: Make this dynamic
@@ -799,18 +807,18 @@ Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageU
     // Create the image
     //
     VkImageCreateInfo imageCreateInfo{};
-    imageCreateInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.pNext       = nullptr;
-    imageCreateInfo.flags       = 0;
-    imageCreateInfo.imageType   = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.format      = format;
-    imageCreateInfo.extent      = extent;
-    imageCreateInfo.mipLevels   = 1;
-    imageCreateInfo.arrayLayers = 1;
-    imageCreateInfo.samples     = nbSamples;
-    imageCreateInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
-    imageCreateInfo.usage       = usageFlags;
-    imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.pNext                 = nullptr;
+    imageCreateInfo.flags                 = 0;
+    imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format                = format;
+    imageCreateInfo.extent                = extent;
+    imageCreateInfo.mipLevels             = 1;
+    imageCreateInfo.arrayLayers           = 1;
+    imageCreateInfo.samples               = nbSamples;
+    imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+    imageCreateInfo.usage                 = usageFlags;
+    imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     imageCreateInfo.queueFamilyIndexCount = 0;
     imageCreateInfo.pQueueFamilyIndices   = nullptr;
     imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -831,18 +839,21 @@ Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageU
     //
     // Create the image view
     //
-    VkImageViewCreateInfo ivCreateInfo           = {};
-    ivCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    ivCreateInfo.pNext                           = nullptr;
-    ivCreateInfo.flags                           = 0;
-    ivCreateInfo.image                           = texture.image;
-    ivCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    ivCreateInfo.format                          = format;
-    ivCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.subresourceRange.aspectMask     = format == VK_FORMAT_D24_UNORM_S8_UINT ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+    VkImageViewCreateInfo ivCreateInfo = {};
+    ivCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    ivCreateInfo.pNext                 = nullptr;
+    ivCreateInfo.flags                 = 0;
+    ivCreateInfo.image                 = texture.image;
+    ivCreateInfo.viewType              = VK_IMAGE_VIEW_TYPE_2D;
+    ivCreateInfo.format                = format;
+    ivCreateInfo.components.r          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.g          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.b          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.a          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.subresourceRange.aspectMask =
+        format == VK_FORMAT_D24_UNORM_S8_UINT
+            ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
+            : VK_IMAGE_ASPECT_COLOR_BIT;
     ivCreateInfo.subresourceRange.baseMipLevel   = 0;
     ivCreateInfo.subresourceRange.levelCount     = 1;
     ivCreateInfo.subresourceRange.baseArrayLayer = 0;

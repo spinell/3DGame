@@ -28,8 +28,8 @@ struct Texture {
     VkImageView   view{VK_NULL_HANDLE};
     VmaAllocation allocation{VK_NULL_HANDLE};
     VkSampler     sampler{VK_NULL_HANDLE};
-    uint32_t width;
-    uint32_t height;
+    uint32_t      width;
+    uint32_t      height;
 };
 
 namespace VulkanContext {
@@ -59,11 +59,16 @@ void                          copyBufferToImage(
                                                     uint32_t               rangeCount,
                                                     VkPushConstantRange*   ranges);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
-[[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert, Shader frag);
+[[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert,
+                                                     Shader frag,
+                                                     bool   enableDepthTest = false);
 
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
                                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
-[[nodiscard]] Texture createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usageFlags) noexcept;
+[[nodiscard]] Texture createTexture(uint32_t          width,
+                                    uint32_t          height,
+                                    VkFormat          format,
+                                    VkImageUsageFlags usageFlags) noexcept;
 
 } // namespace VulkanContext

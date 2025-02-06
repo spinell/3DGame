@@ -187,7 +187,7 @@ void TestLayer1::onAttach() {
     vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl);
     fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
 
-    trianglePipeline = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader);
+    trianglePipeline = VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, true);
 
     vertTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_vert_glsl);
     fragTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_frag_glsl);
@@ -336,21 +336,47 @@ void TestLayer1::onUpdate(float timeStep) {
                           pipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
+        struct TriangleObj {
+            glm::mat4 model;
+            glm::vec4 color;
+        };
+        std::array<TriangleObj, 3> triangles;
+        triangles[0].model = glm::translate(glm::mat4(1), {1, 2, 2});
+        triangles[0].color[0]   = 1;
+        triangles[0].color[1]   = 0;
+        triangles[0].color[2]   = 0;
+        triangles[0].color[3]   = 1;
+        triangles[1].model = glm::translate(glm::mat4(1), {1, 2, 0});
+        triangles[1].color[0]   = 0;
+        triangles[1].color[1]   = 1;
+        triangles[1].color[2]   = 0;
+        triangles[1].color[3]   = 1;
+        triangles[2].model = glm::translate(glm::mat4(1), {1, 2, 1});
+        triangles[2].color[0]   = 0;
+        triangles[2].color[1]   = 0;
+        triangles[2].color[2]   = 1;
+        triangles[2].color[3]   = 1;
         PushData pushData;
         pushData.projection = cameraController.getProjectonMatrix();
         pushData.view       = cameraController.getViewMatrix();
-        pushData.model      = glm::translate(glm::mat4(1), {1, 2, 0});
-        pushData.color[0]   = 1;
-        pushData.color[1]   = 0;
-        pushData.color[2]   = 0;
-        pushData.color[3]   = 1;
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(pushData), reinterpret_cast<void*>(&pushData));
+
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           trianglePipeline.pipeline);
-        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+
+        for(const auto& triangle : triangles){
+            pushData.model      = triangle.model;
+            pushData.color[0]   = triangle.color.x;
+            pushData.color[1]   = triangle.color.y;
+            pushData.color[2]   = triangle.color.z;
+            pushData.color[3]   = triangle.color.w;
+
+            vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                            sizeof(pushData), reinterpret_cast<void*>(&pushData));
+
+            vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+        }
 
 #if 1
         pushData.model    = glm::translate(glm::mat4(1), {-1, -2, 0});
