@@ -13,9 +13,12 @@ layout (location = 3) in vec2 inTex;
 layout (location = 0) out vec2 outTex;
 
 
-layout( push_constant, std140 ) uniform constants {
+layout( set=0, binding=0, std140 ) uniform PerFrameData {
     mat4 projection;
     mat4 view;
+};
+
+layout( push_constant, std140 ) uniform constants {
     mat4 model;
     vec4 color;
 } push;
@@ -23,6 +26,6 @@ layout( push_constant, std140 ) uniform constants {
 
 void main() {
     outTex =inTex;
-    gl_Position = push.projection * push.view * push.model * vec4(inPosition, 1.0f);
+    gl_Position = projection * view * push.model * vec4(inPosition, 1.0f);
     gl_Position.y = -gl_Position.y;
 }

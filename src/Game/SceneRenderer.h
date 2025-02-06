@@ -33,6 +33,7 @@ public:
 private:
     entt::registry* mRegistry{};
 
+    Buffer           mPerFrameBuffer;
     Shader           mVertMeshShader;
     Shader           mFragMeshShader;
     GraphicPipeline  mMeshPipeline;
