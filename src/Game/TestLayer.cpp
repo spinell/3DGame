@@ -32,6 +32,20 @@
 
 #include <array>
 
+struct CTransform {
+    glm::vec3 position;
+    glm::vec3 scale;
+    glm::vec3 rotation;
+};
+struct CMesh {
+    Mesh mesh;
+};
+struct CMaterial {
+    glm::vec4 color;
+};
+
+entt::registry registry;
+
 Texture createCheckBoardTexture() {
     Texture texture =
         VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM,
@@ -108,25 +122,15 @@ FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
 Shader           vertShader;
 Shader           fragShader;
-Shader           vertTriangleShader;
-Shader           fragTriangleShader;
-Shader           vertTriangleTexShader;
-Shader           fragTriangleTexShader;
-
 Shader          vertMeshShader;
 Shader          fragMeshShader;
 GraphicPipeline meshPipeline;
 
 GraphicPipeline pipeline;
-GraphicPipeline trianglePipeline;
-GraphicPipeline triangleTexPipeline;
-Buffer          uniformBuffer;
-Buffer          uniformBuffer2;
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture              texture;
 Texture              depthBuffer;
 VulkanDescriptorPool descriptorPool;
-VkDescriptorSet      descriptorSet;
 VkDescriptorSet      meshPipelineDescriptorSet0;
 struct PushData {
     glm::mat4 projection;
@@ -138,12 +142,6 @@ struct PushData {
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
 
-struct Object {
-    Mesh mesh;
-    glm::mat4 model;
-    glm::vec4 color;
-};
-std::vector<Object> objects;
 
 TestLayer1::~TestLayer1() {}
 
@@ -152,61 +150,48 @@ void TestLayer1::onAttach() {
     Renderer::Init();
     descriptorPool.init();
 
-    meshs.push_back(Mesh::CreateMeshCube(1.0f));
-    meshs.push_back(Mesh::CreateGrid(15.0f, 15.0f, 5.0f, 5.0f));
-    meshs.push_back(Mesh::CreateCylinder(1, 1, 10, 10, 10));
-    meshs.push_back(Mesh::CreateSphere(1, 10, 10));
-    meshs.push_back(Mesh::CreateGeoSphere(1, 10));
+    auto meshCube = Mesh::CreateMeshCube(1.0f);
+    auto meshGrid = Mesh::CreateGrid(10.0f, 10.0f, 2.0f, 2.0f);
+    auto meshCylinder = Mesh::CreateCylinder(1, 1, 10, 10, 10);
+    auto meshSphere = Mesh::CreateSphere(1, 10, 10);
+    auto meshGeoSphere = Mesh::CreateGeoSphere(1, 10);
 
-    objects.emplace_back();
-    objects.back().mesh = meshs[0];
-    objects.back().model    = glm::translate(glm::mat4(1), {-5, 0, 10});
-    objects.back().color[0] = 1;
-    objects.back().color[1] = 0;
-    objects.back().color[2] = 0;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[0];
-    objects.back().model    = glm::translate(glm::mat4(1), {-10, 0, 10});
-    objects.back().color[0] = 1;
-    objects.back().color[1] = 1;
-    objects.back().color[2] = 1;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[0];
-    objects.back().model    = glm::translate(glm::mat4(1), {-15, 0, 10});
-    objects.back().color[0] = 0.5f;
-    objects.back().color[1] = 0.5f;
-    objects.back().color[2] = 0.5f;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[1];
-    objects.back().model    = glm::translate(glm::mat4(1), {0, 0, 0});
-    objects.back().color[0] = 1.0f;
-    objects.back().color[1] = 1.0f;
-    objects.back().color[2] = 1.0f;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[2];
-    objects.back().model    = glm::translate(glm::mat4(1), {10, 0, 0});
-    objects.back().color[0] = 1.0f;
-    objects.back().color[1] = 1.0f;
-    objects.back().color[2] = 1.0f;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[3];
-    objects.back().model    = glm::translate(glm::mat4(1), {2, 2, 2});
-    objects.back().color[0] = 1.0f;
-    objects.back().color[1] = 1.0f;
-    objects.back().color[2] = 1.0f;
-    objects.back().color[3] = 1;
-    objects.emplace_back();
-    objects.back().mesh = meshs[4];
-    objects.back().model    = glm::translate(glm::mat4(1), {-2, 2, 2});
-    objects.back().color[0] = 1.0f;
-    objects.back().color[1] = 1.0f;
-    objects.back().color[2] = 1.0f;
-    objects.back().color[3] = 1;
+    meshs.push_back(meshCube);
+    meshs.push_back(meshGrid);
+    meshs.push_back(meshCylinder);
+    meshs.push_back(meshSphere);
+    meshs.push_back(meshGeoSphere);
+
+    // floor
+    auto e = registry.create();
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshGrid;
+    registry.emplace<CMaterial>(e).color = {1.f, 1.f, 1.f, 1.0f};
+    registry.emplace<CTransform>(e).position = {0, 0, 0};
+
+    // cubes
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshCube;
+    registry.emplace<CMaterial>(e).color = {1.0f, 0.0f, 0.0f, 1.0f};
+    registry.emplace<CTransform>(e).position = {0, 0.5f, 0};
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshCube;
+    registry.emplace<CMaterial>(e).color = {1.0f, 1.0f, 1.0f, 1.0f};
+    registry.emplace<CTransform>(e).position = {-5, 0, 5};
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshCube;
+    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
+    registry.emplace<CTransform>(e).position = {-15, 0, 10};
+
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshCylinder;
+    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
+    registry.emplace<CTransform>(e).position = {5, 5, 10};
+
+    e = registry.create();
+    registry.emplace<CMesh>(e).mesh = meshGeoSphere;
+    registry.emplace<CMaterial>(e).color = {.5f, .5f, .5f, 1.0f};
+    registry.emplace<CTransform>(e).position = {5, 5, 5};
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -261,27 +246,10 @@ void TestLayer1::onAttach() {
     fragShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
     pipeline   = VulkanContext::createGraphicPipeline(vertShader, fragShader);
 
-    vertTriangleShader = VulkanContext::createShaderModule(spirv_triangle_vert_glsl);
-    fragTriangleShader = VulkanContext::createShaderModule(spirv_triangle_frag_glsl);
-
-    trianglePipeline =
-        VulkanContext::createGraphicPipeline(vertTriangleShader, fragTriangleShader, true);
-
-    vertTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_vert_glsl);
-    fragTriangleTexShader = VulkanContext::createShaderModule(spirv_triangle_tex_frag_glsl);
-    triangleTexPipeline =
-        VulkanContext::createGraphicPipeline(vertTriangleTexShader, fragTriangleTexShader);
-
-    descriptorSet = descriptorPool.allocate(triangleTexPipeline.descriptorSetLayout[0]);
-
     texture     = createCheckBoardTexture();
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
         VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
-                                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
-                                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     // Mesh pipeline
     {
@@ -313,10 +281,6 @@ void TestLayer1::onDetach() {
     descriptorPool.destroy();
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
 
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer.buffer,
-                     uniformBuffer.allocation);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), uniformBuffer2.buffer,
-                     uniformBuffer2.allocation);
     vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
@@ -326,14 +290,8 @@ void TestLayer1::onDetach() {
 
     vkDestroyShaderModule(VulkanContext::getDevice(), vertShader.shaderModule, nullptr);
     vkDestroyShaderModule(VulkanContext::getDevice(), fragShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), vertTriangleTexShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), fragTriangleTexShader.shaderModule, nullptr);
 
     pipeline.destroy();
-    trianglePipeline.destroy();
-    triangleTexPipeline.destroy();
     delete vulkanSwapchain;
     Renderer::Shutdown();
     VulkanContext::Shutdown();
@@ -435,53 +393,16 @@ void TestLayer1::onUpdate(float timeStep) {
         vkCmdSetScissorWithCount(frameData.commandBuffer, 1, &rect);
 
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          pipeline.pipeline);
-        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
-        struct TriangleObj {
-            glm::mat4 model;
-            glm::vec4 color;
-        };
-        std::array<TriangleObj, 3> triangles;
-        triangles[0].model    = glm::translate(glm::mat4(1), {1, 2, 2});
-        triangles[0].color[0] = 1;
-        triangles[0].color[1] = 0;
-        triangles[0].color[2] = 0;
-        triangles[0].color[3] = 1;
-        triangles[1].model    = glm::translate(glm::mat4(1), {1, 2, 0});
-        triangles[1].color[0] = 0;
-        triangles[1].color[1] = 1;
-        triangles[1].color[2] = 0;
-        triangles[1].color[3] = 1;
-        triangles[2].model    = glm::translate(glm::mat4(1), {1, 2, 1});
-        triangles[2].color[0] = 0;
-        triangles[2].color[1] = 0;
-        triangles[2].color[2] = 1;
-        triangles[2].color[3] = 1;
-        PushData pushData;
-        pushData.projection = cameraController.getProjectonMatrix();
-        pushData.view       = cameraController.getViewMatrix();
-
-        vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          trianglePipeline.pipeline);
-
-        for (const auto& triangle : triangles) {
-            pushData.model    = triangle.model;
-            pushData.color[0] = triangle.color.x;
-            pushData.color[1] = triangle.color.y;
-            pushData.color[2] = triangle.color.z;
-            pushData.color[3] = triangle.color.w;
-
-            vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                               sizeof(pushData), reinterpret_cast<void*>(&pushData));
-
+        // draw back ground
+        {
+            vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline.pipeline);
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
+
         }
 
-        // render cubes
+        // render scene
         {
             vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -502,90 +423,29 @@ void TestLayer1::onUpdate(float timeStep) {
 
             vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
 
-            for (const auto& object : objects) {
-                pushData.model    = object.model;
-                pushData.color[0] = object.color.x;
-                pushData.color[1] = object.color.y;
-                pushData.color[2] = object.color.z;
-                pushData.color[3] = object.color.w;
+            PushData pushData;
+            pushData.projection = cameraController.getProjectonMatrix();
+            pushData.view       = cameraController.getViewMatrix();
+            auto view = registry.view<CTransform, CMesh, CMaterial>();
+            for(auto [entity, ctrans, cmesh, cmat]: view.each()) {
+
+                pushData.model    = glm::translate(glm::mat4(1), ctrans.position);
+                pushData.color[0] = cmat.color.x;
+                pushData.color[1] = cmat.color.y;
+                pushData.color[2] = cmat.color.z;
+                pushData.color[3] = cmat.color.w;
 
                 vkCmdBindDescriptorSets(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     meshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
                                     &meshPipelineDescriptorSet0, 0, nullptr);
 
                 vkCmdPushConstants(frameData.commandBuffer, meshPipeline.pipelineLayout,
-                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                                   sizeof(pushData), reinterpret_cast<void*>(&pushData));
+                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                                    sizeof(pushData), reinterpret_cast<void*>(&pushData));
 
-                Renderer::DrawMesh(frameData.commandBuffer, object.mesh);
+                Renderer::DrawMesh(frameData.commandBuffer, cmesh.mesh);
             }
         }
-
-#if 0
-        pushData.model    = glm::translate(glm::mat4(1), {-1, -2, 0});
-        pushData.color[0] = 1;
-        pushData.color[1] = 1;
-        pushData.color[2] = 1;
-        pushData.color[3] = 1;
-
-        void* ptr;
-        vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation, &ptr);
-        std::memcpy(ptr, &pushData, sizeof(pushData));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation);
-
-        vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer2.allocation, &ptr);
-        std::memcpy(ptr, &pushData, sizeof(pushData));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), uniformBuffer2.allocation);
-
-        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR =
-            (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanContext::getIntance(),
-                                                                 "vkCmdPushDescriptorSetKHR");
-
-        // update set 0
-        {
-            VkDescriptorImageInfo descriptorImageInfo;
-            descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-            descriptorImageInfo.imageView   = texture.view;
-            descriptorImageInfo.sampler     = texture.sampler;
-
-            VkDescriptorBufferInfo descriptorBufferInfo;
-            descriptorBufferInfo.buffer = uniformBuffer.buffer;
-            descriptorBufferInfo.offset = 0;
-            descriptorBufferInfo.range  = 512;
-
-            std::array<VkWriteDescriptorSet, 2> wWriteDescriptorSet{};
-            wWriteDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            wWriteDescriptorSet[0].dstBinding      = 0;
-            wWriteDescriptorSet[0].descriptorCount = 1;
-            wWriteDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            wWriteDescriptorSet[0].pImageInfo      = &descriptorImageInfo;
-
-            wWriteDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            wWriteDescriptorSet[1].dstBinding      = 1;
-            wWriteDescriptorSet[1].descriptorCount = 1;
-            wWriteDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            wWriteDescriptorSet[1].pBufferInfo     = &descriptorBufferInfo;
-#if 0
-            vkCmdPushDescriptorSetKHR(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                      triangleTexPipeline.pipelineLayout, 0 /*setIndex*/,
-                                      wWriteDescriptorSet.size() /*count*/,
-                                      wWriteDescriptorSet.data());
-#else
-            wWriteDescriptorSet[0].dstSet = descriptorSet;
-            wWriteDescriptorSet[1].dstSet = descriptorSet;
-            vkUpdateDescriptorSets(VulkanContext::getDevice(), wWriteDescriptorSet.size(),
-                                   wWriteDescriptorSet.data(), 0, nullptr);
-            vkCmdBindDescriptorSets(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    triangleTexPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
-                                    &descriptorSet, 0, nullptr);
-#endif
-        }
-
-        vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                          triangleTexPipeline.pipeline);
-        vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
-#endif
     }
 
     // end render pass
