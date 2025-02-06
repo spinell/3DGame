@@ -2,8 +2,7 @@
 
 #include "Camera.h"
 #include "CameraController.h"
-#include "GeometryGenerator.h"
-
+#include "Mesh.h"
 #include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanDescriptorPool.h"
@@ -98,40 +97,6 @@ Texture createCheckBoardTexture() {
     return texture;
 };
 
-struct Mesh {
-    Buffer   vertexBuffer;
-    Buffer   indexBuffer;
-    uint32_t indexCount;
-};
-
-Mesh createMeshCube() {
-    GeometryGenerator           geometryGenerator;
-    GeometryGenerator::MeshData meshData;
-    geometryGenerator.createBox(1, 1, 1, meshData);
-
-    const auto vertexSize = meshData.Vertices.size() * sizeof(GeometryGenerator::Vertex);
-    const auto indexSize  = meshData.Indices.size() * sizeof(unsigned);
-
-    Mesh mesh;
-    mesh.indexCount   = meshData.Indices.size();
-    mesh.vertexBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexSize,
-                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    mesh.indexBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexSize,
-                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-    // upload vertex data
-    void* pData{};
-    vmaMapMemory(VulkanContext::getVmaAllocator(), mesh.vertexBuffer.allocation, &pData);
-    std::memcpy(pData, meshData.Vertices.data(), vertexSize);
-    vmaUnmapMemory(VulkanContext::getVmaAllocator(), mesh.vertexBuffer.allocation);
-
-    // upload index data
-    vmaMapMemory(VulkanContext::getVmaAllocator(), mesh.indexBuffer.allocation, &pData);
-    std::memcpy(pData, meshData.Indices.data(), indexSize);
-    vmaUnmapMemory(VulkanContext::getVmaAllocator(), mesh.indexBuffer.allocation);
-
-    return mesh;
-}
 
 struct FrameData {
     VkCommandPool   commandPool;
@@ -171,13 +136,50 @@ struct PushData {
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
 
+struct Object {
+    Mesh mesh;
+    glm::mat4 model;
+    glm::vec4 color;
+};
+std::vector<Object> objects;
+
 TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
     descriptorPool.init();
 
-    meshs.push_back(createMeshCube());
+    meshs.push_back(Mesh::CreateMeshCube(1.0f));
+    meshs.push_back(Mesh::CreateGrid(15.0f, 15.0f, 5.0f, 5.0f));
+
+    objects.emplace_back();
+    objects.back().mesh = meshs[0];
+    objects.back().model    = glm::translate(glm::mat4(1), {-5, 0, 10});
+    objects.back().color[0] = 1;
+    objects.back().color[1] = 0;
+    objects.back().color[2] = 0;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[0];
+    objects.back().model    = glm::translate(glm::mat4(1), {-10, 0, 10});
+    objects.back().color[0] = 1;
+    objects.back().color[1] = 1;
+    objects.back().color[2] = 1;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[0];
+    objects.back().model    = glm::translate(glm::mat4(1), {-15, 0, 10});
+    objects.back().color[0] = 0.5f;
+    objects.back().color[1] = 0.5f;
+    objects.back().color[2] = 0.5f;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[1];
+    objects.back().model    = glm::translate(glm::mat4(1), {0, 0, 0});
+    objects.back().color[0] = 1.0f;
+    objects.back().color[1] = 1.0f;
+    objects.back().color[2] = 1.0f;
+    objects.back().color[3] = 1;
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -453,36 +455,9 @@ void TestLayer1::onUpdate(float timeStep) {
 
         // render cubes
         {
-            struct Object {
-                glm::mat4 model;
-                glm::vec4 color;
-            };
-            std::array<Object, 3> objects;
-            objects[0].model    = glm::translate(glm::mat4(1), {-5, 0, 10});
-            objects[0].color[0] = 1;
-            objects[0].color[1] = 0;
-            objects[0].color[2] = 0;
-            objects[0].color[3] = 1;
-            objects[1].model    = glm::translate(glm::mat4(1), {-10, 0, 10});
-            objects[1].color[0] = 1;
-            objects[1].color[1] = 1;
-            objects[1].color[2] = 1;
-            objects[1].color[3] = 1;
-            objects[2].model    = glm::translate(glm::mat4(1), {-15, 0, 10});
-            objects[2].color[0] = 0.5f;
-            objects[2].color[1] = 0.5f;
-            objects[2].color[2] = 0.5f;
-            objects[2].color[3] = 1;
-
             vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               meshPipeline.pipeline);
-
-            VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(frameData.commandBuffer, 0, 1, &meshs[0].vertexBuffer.buffer,
-                                   &offset);
-            vkCmdBindIndexBuffer(frameData.commandBuffer, meshs[0].indexBuffer.buffer, offset,
-                                 VK_INDEX_TYPE_UINT32);
 
             VkDescriptorImageInfo descriptorImageInfo;
             descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
@@ -500,6 +475,11 @@ void TestLayer1::onUpdate(float timeStep) {
             vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
 
             for (const auto& object : objects) {
+                const auto& mesh = object.mesh;
+                VkDeviceSize offset = 0;
+                vkCmdBindVertexBuffers(frameData.commandBuffer, 0, 1, &mesh.vertexBuffer.buffer, &offset);
+                vkCmdBindIndexBuffer(frameData.commandBuffer, mesh.indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
+
                 pushData.model    = object.model;
                 pushData.color[0] = object.color.x;
                 pushData.color[1] = object.color.y;
@@ -514,7 +494,7 @@ void TestLayer1::onUpdate(float timeStep) {
                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                    sizeof(pushData), reinterpret_cast<void*>(&pushData));
 
-                vkCmdDrawIndexed(frameData.commandBuffer, meshs[0].indexCount, 1, 0, 0, 0);
+                vkCmdDrawIndexed(frameData.commandBuffer, mesh.indexCount, 1, 0, 0, 0);
             }
         }
 

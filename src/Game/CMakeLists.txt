@@ -13,6 +13,8 @@ add_executable(Game
     CameraController.cpp
     GeometryGenerator.h
     GeometryGenerator.cpp
+    Mesh.h
+    Mesh.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp
