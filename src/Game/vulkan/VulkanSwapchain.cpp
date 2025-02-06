@@ -334,7 +334,7 @@ void VulkanSwapchain::present(VkQueue queue, VkPresentModeKHR presentModes) {
     VkResult result                   = vkQueuePresentKHR(queue, &presentInfoKHR);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         spdlog::warn("vkQueuePresentKHR ........  {}", result);
-        // buildSwapchain();
+        //build();
     } else if (result == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
         spdlog::warn("vkQueuePresentKHR() failed : {}", result);
     } else if (result != VK_SUCCESS) {

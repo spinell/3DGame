@@ -9,6 +9,8 @@ add_executable(Game
     SpirV/SpirvReflection.cpp
     Camera.h
     Camera.cpp
+    CameraController.h
+    CameraController.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp

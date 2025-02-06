@@ -26,4 +26,5 @@ vec2 uv[3] = {
 void main() {
     outUV = uv[gl_VertexIndex];
     gl_Position = projection * view * model * vertices[gl_VertexIndex];
+    gl_Position.y = -gl_Position.y;
 }

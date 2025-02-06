@@ -1,11 +1,13 @@
 #include "TestLayer.h"
 
+#include "Camera.h"
+#include "CameraController.h"
+
 #include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanUtils.h"
-#include "Camera.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -14,6 +16,8 @@
 #include <Engine/Log.h>
 #include <Engine/SDL3/SDL3Window.h>
 #include <SDL3/SDL.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
@@ -22,13 +26,12 @@
 #include <spirv_triangle_tex_vert_glsl.h>
 #include <spirv_triangle_vert_glsl.h>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <array>
 
 Texture createCheckBoardTexture() {
-    Texture texture = VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    Texture texture =
+        VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM,
+                                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
     VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
     VkDeviceSize    imageSize     = texture.width * texture.height * 4;
@@ -61,8 +64,9 @@ Texture createCheckBoardTexture() {
         VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
         VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image, static_cast<uint32_t>(texture.width),
-                      static_cast<uint32_t>(texture.height));
+    VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image,
+                                     static_cast<uint32_t>(texture.width),
+                                     static_cast<uint32_t>(texture.height));
 
 #if 0
     VkImageSubresourceRange sr{};
@@ -85,7 +89,8 @@ Texture createCheckBoardTexture() {
         VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
         VK_ACCESS_2_SHADER_READ_BIT);
     VulkanContext::endSingleTimeCommands(cmd);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer, stagingBuffer.allocation);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
+                     stagingBuffer.allocation);
 
     return texture;
 };
@@ -116,8 +121,10 @@ struct PushData {
     glm::mat4 projection;
     glm::mat4 view;
     glm::mat4 model;
-    float color[4];
+    float     color[4];
 };
+
+Engine::CameraController cameraController;
 
 TestLayer1::~TestLayer1() {}
 
@@ -189,8 +196,10 @@ void TestLayer1::onAttach() {
 
     descriptorSet = descriptorPool.allocate(triangleTexPipeline.descriptorSetLayout[0]);
 
-    texture        = createCheckBoardTexture();
-    depthBuffer    = VulkanContext::createTexture(vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height, VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    texture     = createCheckBoardTexture();
+    depthBuffer = VulkanContext::createTexture(
+        vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
+        VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     uniformBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
                                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     uniformBuffer2 = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 512,
@@ -228,25 +237,7 @@ void TestLayer1::onDetach() {
 }
 
 void TestLayer1::onUpdate(float timeStep) {
-    static Engine::Camera camera(20, 20);
-
-    static glm::vec3 position(0);
-    if(Engine::Input::IsKeyDown(Engine::KeyCode::W)) {
-        position +=glm::vec3(0, 10, 0) * timeStep;
-    }
-    if(Engine::Input::IsKeyDown(Engine::KeyCode::S)) {
-        position -=glm::vec3(0, 10, 0) * timeStep;
-    }
-    if(Engine::Input::IsKeyDown(Engine::KeyCode::A)) {
-        position -=glm::vec3(10, 0, 0) * timeStep;
-    }
-    if(Engine::Input::IsKeyDown(Engine::KeyCode::D)) {
-        position +=glm::vec3(10, 0, 0) * timeStep;
-    }
-    if(Engine::Input::IsKeyPressed(Engine::KeyCode::Q)) {
-        camera.setProjection(200, 200);
-    }
-    camera.setPosition(position);
+    cameraController.onUpdate(timeStep);
 
     // start command buffer
     {
@@ -296,16 +287,16 @@ void TestLayer1::onUpdate(float timeStep) {
         colorAttachmentInfo[0].clearValue.color   = {{1.0f, 0.0f, 1.0f, 1.0f}};
 
         VkRenderingAttachmentInfo depthAttachmentInfo{};
-        depthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        depthAttachmentInfo.pNext = 0;
-        depthAttachmentInfo.imageView = depthBuffer.view;
+        depthAttachmentInfo.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        depthAttachmentInfo.pNext              = 0;
+        depthAttachmentInfo.imageView          = depthBuffer.view;
         depthAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         depthAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
         depthAttachmentInfo.resolveImageView   = nullptr;
         depthAttachmentInfo.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         depthAttachmentInfo.loadOp             = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachmentInfo.storeOp            = VK_ATTACHMENT_STORE_OP_STORE;
-        depthAttachmentInfo.clearValue.depthStencil= {1.0f, 0};
+        depthAttachmentInfo.clearValue.depthStencil = {1.0f, 0};
 
         VkRenderingInfo info{};
         info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -346,25 +337,27 @@ void TestLayer1::onUpdate(float timeStep) {
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
         PushData pushData;
-        pushData.projection = camera.getProjectionMatrix();
-        pushData.view = camera.getViewMatrix();
-        pushData.model = glm::translate(glm::mat4(1), {1,1,0});
-        pushData.color[0]  = 1;
-        pushData.color[1]  = 0;
-        pushData.color[2]  = 1;
-        pushData.color[3]  = 1;
-        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushData), reinterpret_cast<void*>(&pushData));
+        pushData.projection = cameraController.getProjectonMatrix();
+        pushData.view       = cameraController.getViewMatrix();
+        pushData.model      = glm::translate(glm::mat4(1), {1, 2, 0});
+        pushData.color[0]   = 1;
+        pushData.color[1]   = 0;
+        pushData.color[2]   = 0;
+        pushData.color[3]   = 1;
+        vkCmdPushConstants(frameData.commandBuffer, trianglePipeline.pipelineLayout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(pushData), reinterpret_cast<void*>(&pushData));
         vkCmdSetPrimitiveTopology(frameData.commandBuffer, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           trianglePipeline.pipeline);
         vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
 
 #if 1
-        pushData.model = glm::translate(glm::mat4(1), {-1,-1,0});
-        pushData.color[0]  = 1;
-        pushData.color[1]  = 1;
-        pushData.color[2]  = 1;
-        pushData.color[3]  = 1;
+        pushData.model    = glm::translate(glm::mat4(1), {-1, -2, 0});
+        pushData.color[0] = 1;
+        pushData.color[1] = 1;
+        pushData.color[2] = 1;
+        pushData.color[3] = 1;
 
         void* ptr;
         vmaMapMemory(VulkanContext::getVmaAllocator(), uniformBuffer.allocation, &ptr);
@@ -499,6 +492,20 @@ void TestLayer1::onUpdate(float timeStep) {
 void TestLayer1::onImGuiRender() {}
 
 bool TestLayer1::onEvent(const Engine::Event& event) {
+    cameraController.onEvent(event);
+
+    event.dispatch<Engine::WindowResizedEvent>([this](const auto& e) {
+        vkDeviceWaitIdle(VulkanContext::getDevice());
+
+        vulkanSwapchain->build();
+        // rebuild depth buffer.
+        vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
+        vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
+
+        depthBuffer = VulkanContext::createTexture(
+            vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
+            VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    });
     event.dispatch<Engine::KeyEvent>([](const Engine::KeyEvent& e) {
         if (e.isPressed()) {
             if (e.getKey() == Engine::KeyCode::Escape) {

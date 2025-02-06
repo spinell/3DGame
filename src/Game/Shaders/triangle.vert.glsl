@@ -18,4 +18,5 @@ vec4 vertices[3] = {
 
 void main() {
     gl_Position = push.projection * push.view * push.model * vertices[gl_VertexIndex];
+    gl_Position.y = -gl_Position.y;
 }
