@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "CameraController.h"
 #include "Mesh.h"
+#include "Renderer.h"
 #include "Spirv/SpirvReflection.h"
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanDescriptorPool.h"
@@ -147,10 +148,14 @@ TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
     VulkanContext::Initialize();
+    Renderer::Init();
     descriptorPool.init();
 
     meshs.push_back(Mesh::CreateMeshCube(1.0f));
     meshs.push_back(Mesh::CreateGrid(15.0f, 15.0f, 5.0f, 5.0f));
+    meshs.push_back(Mesh::CreateCylinder(1, 1, 10, 10, 10));
+    meshs.push_back(Mesh::CreateSphere(1, 10, 10));
+    meshs.push_back(Mesh::CreateGeoSphere(1, 10));
 
     objects.emplace_back();
     objects.back().mesh = meshs[0];
@@ -176,6 +181,27 @@ void TestLayer1::onAttach() {
     objects.emplace_back();
     objects.back().mesh = meshs[1];
     objects.back().model    = glm::translate(glm::mat4(1), {0, 0, 0});
+    objects.back().color[0] = 1.0f;
+    objects.back().color[1] = 1.0f;
+    objects.back().color[2] = 1.0f;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[2];
+    objects.back().model    = glm::translate(glm::mat4(1), {10, 0, 0});
+    objects.back().color[0] = 1.0f;
+    objects.back().color[1] = 1.0f;
+    objects.back().color[2] = 1.0f;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[3];
+    objects.back().model    = glm::translate(glm::mat4(1), {2, 2, 2});
+    objects.back().color[0] = 1.0f;
+    objects.back().color[1] = 1.0f;
+    objects.back().color[2] = 1.0f;
+    objects.back().color[3] = 1;
+    objects.emplace_back();
+    objects.back().mesh = meshs[4];
+    objects.back().model    = glm::translate(glm::mat4(1), {-2, 2, 2});
     objects.back().color[0] = 1.0f;
     objects.back().color[1] = 1.0f;
     objects.back().color[2] = 1.0f;
@@ -308,6 +334,7 @@ void TestLayer1::onDetach() {
     trianglePipeline.destroy();
     triangleTexPipeline.destroy();
     delete vulkanSwapchain;
+    Renderer::Shutdown();
     VulkanContext::Shutdown();
 }
 
@@ -475,11 +502,6 @@ void TestLayer1::onUpdate(float timeStep) {
             vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
 
             for (const auto& object : objects) {
-                const auto& mesh = object.mesh;
-                VkDeviceSize offset = 0;
-                vkCmdBindVertexBuffers(frameData.commandBuffer, 0, 1, &mesh.vertexBuffer.buffer, &offset);
-                vkCmdBindIndexBuffer(frameData.commandBuffer, mesh.indexBuffer.buffer, offset, VK_INDEX_TYPE_UINT32);
-
                 pushData.model    = object.model;
                 pushData.color[0] = object.color.x;
                 pushData.color[1] = object.color.y;
@@ -494,7 +516,7 @@ void TestLayer1::onUpdate(float timeStep) {
                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                    sizeof(pushData), reinterpret_cast<void*>(&pushData));
 
-                vkCmdDrawIndexed(frameData.commandBuffer, mesh.indexCount, 1, 0, 0, 0);
+                Renderer::DrawMesh(frameData.commandBuffer, object.mesh);
             }
         }
 

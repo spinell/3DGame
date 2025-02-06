@@ -15,6 +15,8 @@ add_executable(Game
     GeometryGenerator.cpp
     Mesh.h
     Mesh.cpp
+    Renderer.h
+    Renderer.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp
