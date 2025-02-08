@@ -52,6 +52,7 @@ target_glsl_shaders(Game
 target_include_directories(Game
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/generated
+        ${Stb_INCLUDE_DIR}
 )
 
 

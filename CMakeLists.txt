@@ -41,6 +41,7 @@ find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
 find_package(glm    1.0.1   EXACT CONFIG REQUIRED)
 find_package(entt   3.14.0  EXACT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(Stb)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
 add_subdirectory(src/Engine)
