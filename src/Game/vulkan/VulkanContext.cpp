@@ -515,7 +515,7 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
                                 nbPushRange, pushConstantRange.data());
 }
 
-GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepthTest, bool vertexLayout) {
+GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepthTest, bool vertexLayout, bool cull) {
     VkPipelineShaderStageCreateInfo shaderStages[2]{};
     shaderStages[0] = vert.stageCreateInfo;
     shaderStages[1] = frag.stageCreateInfo;
@@ -649,8 +649,14 @@ GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepth
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth               = 1.0f;
-    rasterizer.cullMode                = VK_CULL_MODE_NONE;
-    rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    if(cull) {
+        rasterizer.cullMode                = VK_CULL_MODE_BACK_BIT;
+        rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    }
+    else{
+        rasterizer.cullMode                = VK_CULL_MODE_NONE;
+        rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    }
     rasterizer.depthBiasEnable         = VK_FALSE;
     rasterizer.depthBiasConstantFactor = 0.0f;
     rasterizer.depthBiasClamp          = 0.0f;

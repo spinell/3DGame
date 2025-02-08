@@ -26,8 +26,6 @@
 
 #include <array>
 
-
-
 Texture createCheckBoardTexture() {
     Texture texture =
         VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM,
@@ -106,8 +104,8 @@ Shader           fragFullScreenShader;
 GraphicPipeline  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
-Texture              texture;
-Texture              depthBuffer;
+Texture texture;
+Texture depthBuffer;
 
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
@@ -119,12 +117,11 @@ void TestLayer1::onAttach() {
     Renderer::Init();
     mSceneRenderer = new SceneRenderer();
 
-
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
-    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2.0f, 2.0f);
-    auto meshCylinder  = Mesh::CreateCylinder(1, 1, 10, 10, 10);
-    auto meshSphere    = Mesh::CreateSphere(1, 10, 10);
-    auto meshGeoSphere = Mesh::CreateGeoSphere(1, 10);
+    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2000.0f, 2000.0f);
+    auto meshCylinder  = Mesh::CreateCylinder(1, 1, 10, 100, 100);
+    auto meshSphere    = Mesh::CreateSphere(1, 100, 100);
+    auto meshGeoSphere = Mesh::CreateGeoSphere(1, 100);
 
     meshs.push_back(meshCube);
     meshs.push_back(meshGrid);
@@ -133,34 +130,62 @@ void TestLayer1::onAttach() {
     meshs.push_back(meshGeoSphere);
 
     // floor
-    auto e                                   = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshGrid;
-    mRegistry.emplace<CMaterial>(e).color     = {1.f, 1.f, 1.f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {0, 0, 0};
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshGrid;
+        mRegistry.emplace<CTransform>(e).position = {0, 0, 0};
+        CMaterial& mat                            = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
+    }
 
     // cubes
-    e                                        = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
-    mRegistry.emplace<CMaterial>(e).color     = {1.0f, 0.0f, 0.0f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {0, 0.5f, 0};
-    e                                        = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
-    mRegistry.emplace<CMaterial>(e).color     = {1.0f, 1.0f, 1.0f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {-5, 0, 5};
-    e                                        = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshCube;
-    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {-15, 0, 10};
-
-    e                                        = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
-    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {5, 5, 10};
-
-    e                                        = mRegistry.create();
-    mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
-    mRegistry.emplace<CMaterial>(e).color     = {.5f, .5f, .5f, 1.0f};
-    mRegistry.emplace<CTransform>(e).position = {5, 5, 5};
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+        mRegistry.emplace<CTransform>(e).position = {0, 0.5f, 0};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+    }
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+        mRegistry.emplace<CTransform>(e).position = {1, 0.5f, 0};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+    }
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshCube;
+        mRegistry.emplace<CTransform>(e).position = {-1, 0.5f, 0};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+    }
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
+        mRegistry.emplace<CTransform>(e).position = {5, 5, 10};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 0.0f, 1.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 0.0f, 1.0f, 1.0f};
+        mat.specular                              = {1.0f, 0.0f, 1.0f, 1.0f};
+    }
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
+        mRegistry.emplace<CTransform>(e).position = {5, 5, 5};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+    }
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -213,14 +238,13 @@ void TestLayer1::onAttach() {
 
     vertFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
     fragFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
-    pipelineFullScreen   = VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
+    pipelineFullScreen =
+        VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
 
     texture     = createCheckBoardTexture();
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
         VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-
-
 }
 
 void TestLayer1::onDetach() {
@@ -357,7 +381,9 @@ void TestLayer1::onUpdate(float timeStep) {
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
         }
 
-        mSceneRenderer->render(&mRegistry, frameData.commandBuffer, texture, cameraController.getProjectonMatrix(), cameraController.getViewMatrix());
+        mSceneRenderer->render(&mRegistry, frameData.commandBuffer, texture,
+                               cameraController.getProjectonMatrix(),
+                               cameraController.getViewMatrix(), cameraController.getPosition());
     }
 
     // end render pass

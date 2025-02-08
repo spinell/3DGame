@@ -14,7 +14,10 @@ struct CMesh {
     Mesh mesh;
 };
 struct CMaterial {
-    glm::vec4 color;
+    glm::vec4 ambient   = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::vec4 diffuse   = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::vec4 specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    float     shininess = 32;
 };
 
 class SceneRenderer {
@@ -28,12 +31,14 @@ public:
     SceneRenderer(SceneRenderer&&) = delete;
     SceneRenderer& operator=(SceneRenderer&&) = delete;
 
-    void render(entt::registry*, VkCommandBuffer cmd, Texture texture, const glm::mat4& proj, const glm::mat4& view);
+    void render(entt::registry*, VkCommandBuffer cmd, Texture texture, const glm::mat4& proj, const glm::mat4& view,
+                           const glm::vec3& viewPosition);
 
 private:
     entt::registry* mRegistry{};
 
     Buffer           mPerFrameBuffer;
+    Buffer           mLightDataBuffer;
     Shader           mVertMeshShader;
     Shader           mFragMeshShader;
     GraphicPipeline  mMeshPipeline;
