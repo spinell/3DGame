@@ -23,8 +23,59 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
-
 #include <array>
+#include <filesystem>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
+
+Texture createTextureFromFile(std::filesystem::path path) {
+    std::string pathString = path.string();
+
+    int width, height, channels;
+    auto* data = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
+    if(data) {
+        ENGINE_INFO("Loading {}", pathString);
+
+        Texture texture = VulkanContext::createTexture(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        texture.width  = width;
+        texture.height = height;
+
+        VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
+        VkDeviceSize    imageSize     = texture.width * texture.height * 4;
+        auto            stagingBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        void* ptr{};
+        vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
+        std::memcpy(ptr, data, imageSize);
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
+
+        VulkanUtils::transitionImageLayout(
+            cmd, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+        VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image,
+                                        static_cast<uint32_t>(texture.width),
+                                        static_cast<uint32_t>(texture.height));
+
+        VulkanUtils::transitionImageLayout(
+            cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            VK_ACCESS_2_SHADER_READ_BIT);
+
+        VulkanContext::endSingleTimeCommands(cmd);
+
+        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
+                        stagingBuffer.allocation);
+
+        return texture;
+    }
+    ENGINE_ERROR("Failed to load {}", pathString);
+    return {};
+}
 
 Texture createCheckBoardTexture() {
     Texture texture =
@@ -66,21 +117,6 @@ Texture createCheckBoardTexture() {
                                      static_cast<uint32_t>(texture.width),
                                      static_cast<uint32_t>(texture.height));
 
-#if 0
-    VkImageSubresourceRange sr{};
-    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    sr.baseMipLevel   = 0;
-    sr.levelCount     = 1;
-    sr.baseArrayLayer = 0;
-    sr.layerCount     = 1;
-    VkClearColorValue cc;
-    cc.float32[0] = 0;
-    cc.float32[1] = 1;
-    cc.float32[2] = 0;
-    cc.float32[3] = 1;
-    vkCmdClearColorImage(cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &cc, 1, &sr);
-#endif
-
     VulkanUtils::transitionImageLayout(
         cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
@@ -118,7 +154,7 @@ void TestLayer1::onAttach() {
     mSceneRenderer = new SceneRenderer();
 
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
-    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2000.0f, 2000.0f);
+    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2, 2);
     auto meshCylinder  = Mesh::CreateCylinder(1, 1, 10, 100, 100);
     auto meshSphere    = Mesh::CreateSphere(1, 100, 100);
     auto meshGeoSphere = Mesh::CreateGeoSphere(1, 100);
@@ -146,27 +182,27 @@ void TestLayer1::onAttach() {
         mRegistry.emplace<CMesh>(e).mesh          = meshCube;
         mRegistry.emplace<CTransform>(e).position = {0, 0.5f, 0};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
     }
     {
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh          = meshCube;
         mRegistry.emplace<CTransform>(e).position = {1, 0.5f, 0};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
     }
     {
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh          = meshCube;
         mRegistry.emplace<CTransform>(e).position = {-1, 0.5f, 0};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 0.0f, 0.0f, 1.0f};
-        mat.specular                              = {1.0f, 0.0f, 0.0f, 1.0f};
+        mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
     }
     {
         auto e                                    = mRegistry.create();
@@ -241,7 +277,7 @@ void TestLayer1::onAttach() {
     pipelineFullScreen =
         VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
 
-    texture     = createCheckBoardTexture();
+    texture     = createTextureFromFile("./data/container.png");
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
         VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);

@@ -75,6 +75,16 @@ target_compile_definitions(Game
 )
 
 
+############################################################################################################
+#									Copy shaders and data
+############################################################################################################
+ADD_CUSTOM_COMMAND (
+	TARGET Game POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E echo "Copying  ${CMAKE_CURRENT_SOURCE_DIR}/data to $<TARGET_FILE_DIR:Game>/data"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/data   $<TARGET_FILE_DIR:Game>/data
+	VERBATIM
+)
+
 ###############################################################
 #		Group sources for IDI like Visual Studio
 ###############################################################
