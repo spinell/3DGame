@@ -157,6 +157,8 @@ void TestLayer1::onAttach() {
     Renderer::Init();
     mSceneRenderer = new SceneRenderer();
 
+    cameraController.setPosition({-2, 2, 2});
+
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
     auto meshGrid      = Mesh::CreateGrid(1.0f, 1.0f, 2, 2);
     auto meshCylinder  = Mesh::CreateCylinder(0.5, 0.3, 2, 100, 100);
@@ -263,26 +265,38 @@ void TestLayer1::onAttach() {
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
     }
-    // cylinder
-    {
-        auto e                                    = mRegistry.create();
-        mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
-        mRegistry.emplace<CTransform>(e).position = {9, 1, 5};
-        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 0.0f, 1.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 0.0f, 1.0f, 1.0f};
-        mat.specular                              = {1.0f, 0.0f, 1.0f, 1.0f};
-    }
-    // sphere
-    {
-        auto e                                    = mRegistry.create();
-        mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
-        mRegistry.emplace<CTransform>(e).position = {9, 2.5, 5};
-        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
-        mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
-    }
+    auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 position){
+        // cylinder
+        {
+            auto e                                    = mRegistry.create();
+            mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
+            mRegistry.emplace<CTransform>(e).position = position;
+            auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+            mat.ambient                               = {1.0f, 0.0f, 1.0f, 1.0f};
+            mat.diffuse                               = {1.0f, 0.0f, 1.0f, 1.0f};
+            mat.specular                              = {1.0f, 0.0f, 1.0f, 1.0f};
+        }
+        // sphere
+        {
+            auto e                                    = mRegistry.create();
+            mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
+            mRegistry.emplace<CTransform>(e).position = {position.x, position.y+1, position.z};
+            auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+            mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
+            mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
+            mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+        }
+    };
+    createCynlinderAndSphere({9.0f, 1.0f,  5.0f});
+    createCynlinderAndSphere({9.0f, 1.0f,  0.0f});
+    createCynlinderAndSphere({9.0f, 1.0f, -5.0f});
+    createCynlinderAndSphere({-9.0f, 1.0f,  5.0f});
+    createCynlinderAndSphere({-9.0f, 1.0f,  0.0f});
+    createCynlinderAndSphere({-9.0f, 1.0f, -5.0f});
+    createCynlinderAndSphere({-3.0f, 1.0f, -7.0f});
+    createCynlinderAndSphere({ 0.0f, 1.0f, -7.0f});
+    createCynlinderAndSphere({ 3.0f, 1.0f, -7.0f});
+
     // sphere
     {
         auto e                                    = mRegistry.create();
