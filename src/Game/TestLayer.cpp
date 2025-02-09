@@ -23,28 +23,32 @@
 #include <imgui.h>
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
+
 #include <array>
 #include <filesystem>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-
 Texture createTextureFromFile(std::filesystem::path path) {
     std::string pathString = path.string();
 
-    int width, height, channels;
+    int   width, height, channels;
     auto* data = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
-    if(data) {
+    if (data) {
         ENGINE_INFO("Loading {}", pathString);
 
-        Texture texture = VulkanContext::createTexture(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        Texture texture = VulkanContext::createTexture(
+            width, height, VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         texture.width  = width;
         texture.height = height;
 
         VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
         VkDeviceSize    imageSize     = texture.width * texture.height * 4;
-        auto            stagingBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        auto            stagingBuffer = VulkanContext::createBuffer(
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         void* ptr{};
         vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
@@ -57,8 +61,8 @@ Texture createTextureFromFile(std::filesystem::path path) {
             VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
         VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image,
-                                        static_cast<uint32_t>(texture.width),
-                                        static_cast<uint32_t>(texture.height));
+                                         static_cast<uint32_t>(texture.width),
+                                         static_cast<uint32_t>(texture.height));
 
         VulkanUtils::transitionImageLayout(
             cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -69,7 +73,7 @@ Texture createTextureFromFile(std::filesystem::path path) {
         VulkanContext::endSingleTimeCommands(cmd);
 
         vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
-                        stagingBuffer.allocation);
+                         stagingBuffer.allocation);
 
         return texture;
     }
@@ -154,10 +158,10 @@ void TestLayer1::onAttach() {
     mSceneRenderer = new SceneRenderer();
 
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
-    auto meshGrid      = Mesh::CreateGrid(10.0f, 10.0f, 2, 2);
-    auto meshCylinder  = Mesh::CreateCylinder(1, 1, 10, 100, 100);
-    auto meshSphere    = Mesh::CreateSphere(1, 100, 100);
-    auto meshGeoSphere = Mesh::CreateGeoSphere(1, 100);
+    auto meshGrid      = Mesh::CreateGrid(1.0f, 1.0f, 2, 2);
+    auto meshCylinder  = Mesh::CreateCylinder(0.5, 0.3, 2, 100, 100);
+    auto meshSphere    = Mesh::CreateSphere(0.5f, 100, 100);
+    auto meshGeoSphere = Mesh::CreateGeoSphere(0.5f, 100);
 
     meshs.push_back(meshCube);
     meshs.push_back(meshGrid);
@@ -167,13 +171,68 @@ void TestLayer1::onAttach() {
 
     // floor
     {
-        auto e                                    = mRegistry.create();
-        mRegistry.emplace<CMesh>(e).mesh          = meshGrid;
-        mRegistry.emplace<CTransform>(e).position = {0, 0, 0};
-        CMaterial& mat                            = mRegistry.emplace<CMaterial>(e);
-        mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {0, 0, 0};
+        trans.rotation                   = {0, 0, 0};
+        trans.scale                      = {30, 1, 30};
+        CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+    }
+    // left wall (-x)
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {-15.f, 2.5f, 0.f};
+        trans.rotation                   = {0.f, 0.f, -90.f};
+        trans.scale                      = {5.f, 1.f, 30.f};
+        CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+    }
+    // right wall (+x)
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {15.f, 2.5f, 0.f};
+        trans.rotation                   = {0.f, 0.f, 90.f};
+        trans.scale                      = {5.f, 1.f, 30.f};
+        CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+    }
+    // back wall (-z)
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {0.f, 2.5f, -15.f};
+        trans.rotation                   = {90.f, 0.f, 0.f};
+        trans.scale                      = {30.f, 1.f, 5.f};
+        CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+    }
+    // front wall (+z)
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {0.f, 2.5f, 15.f};
+        trans.rotation                   = {-90.f, 0.f, 0.f};
+        trans.scale                      = {30.f, 1.f, 5.f};
+        CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
     }
 
     // cubes
@@ -204,25 +263,36 @@ void TestLayer1::onAttach() {
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
     }
+    // cylinder
     {
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh          = meshCylinder;
-        mRegistry.emplace<CTransform>(e).position = {5, 5, 10};
+        mRegistry.emplace<CTransform>(e).position = {9, 1, 5};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 0.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 0.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 0.0f, 1.0f, 1.0f};
     }
+    // sphere
     {
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
-        mRegistry.emplace<CTransform>(e).position = {5, 5, 5};
+        mRegistry.emplace<CTransform>(e).position = {9, 2.5, 5};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
     }
-
+    // sphere
+    {
+        auto e                                    = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
+        mRegistry.emplace<CTransform>(e).position = {7, .5, 5};
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+    }
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
                                               SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);

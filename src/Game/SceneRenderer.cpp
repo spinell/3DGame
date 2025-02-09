@@ -5,6 +5,8 @@
 #include "vulkan/VulkanContext.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/euler_angles.hpp>
 #include <spirv_mesh_frag_glsl.h>
 #include <spirv_mesh_vert_glsl.h>
 
@@ -153,7 +155,10 @@ void SceneRenderer::render(entt::registry*  registry,
         PushData pushData{};
         auto view           = mRegistry->view<CTransform, CMesh, CMaterial>();
         for (auto [entity, ctrans, cmesh, cmat] : view.each()) {
-            pushData.model    = glm::translate(glm::mat4(1), ctrans.position);
+            auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
+            auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
+            auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
+            pushData.model     = translateMat * rotationMat * scaleMat;
             pushData.ambient   = cmat.ambient;
             pushData.diffuse   = cmat.diffuse;
             pushData.specular  = cmat.specular;
