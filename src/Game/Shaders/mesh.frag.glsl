@@ -40,6 +40,7 @@ layout( push_constant, std140 ) uniform constants {
     vec4  ambient;
     vec4  diffuse;
     vec4  specular;
+    vec2  texScale;
     float shininess;
 } push;
 

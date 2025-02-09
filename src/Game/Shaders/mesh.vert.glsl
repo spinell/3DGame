@@ -28,6 +28,7 @@ layout( push_constant, std140 ) uniform constants {
     vec4  ambient;
     vec4  diffuse;
     vec4  specular;
+    vec2  texScale;
     float shininess;
 } push;
 
@@ -36,7 +37,7 @@ void main() {
 
     outPosition = vec3(push.model * vec4(inPosition, 1.0f)); // world space position
     outNormal   = mat3(transpose(inverse(push.model))) * inNormal;
-    outTex      = inTex;
+    outTex      = inTex * push.texScale;
     gl_Position = projection * view * push.model * vec4(inPosition, 1.0f);
     gl_Position.y = -gl_Position.y;
 }

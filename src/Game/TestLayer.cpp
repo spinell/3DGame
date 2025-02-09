@@ -145,6 +145,8 @@ GraphicPipeline  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture texture;
+Texture textureBrick;
+Texture textureFloor;
 Texture depthBuffer;
 
 Engine::CameraController cameraController;
@@ -159,12 +161,15 @@ void TestLayer1::onAttach() {
 
     cameraController.setPosition({-2, 2, 2});
 
+    texture      = createTextureFromFile("./data/container.png");
+    textureBrick = createTextureFromFile("./data/brick_wall2-diff-512.tga");
+    textureFloor = createTextureFromFile("./data/pattern_101.tga");
+
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
     auto meshGrid      = Mesh::CreateGrid(1.0f, 1.0f, 2, 2);
     auto meshCylinder  = Mesh::CreateCylinder(0.5, 0.3, 2, 100, 100);
     auto meshSphere    = Mesh::CreateSphere(0.5f, 100, 100);
     auto meshGeoSphere = Mesh::CreateGeoSphere(0.5f, 100);
-
     meshs.push_back(meshCube);
     meshs.push_back(meshGrid);
     meshs.push_back(meshCylinder);
@@ -183,32 +188,38 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = textureFloor;
+        mat.texScale                     = glm::vec2(10.f, 10.0f);
     }
     // left wall (-x)
     {
         auto e                           = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh = meshGrid;
         CTransform& trans                = mRegistry.emplace<CTransform>(e);
-        trans.position                   = {-15.f, 2.5f, 0.f};
-        trans.rotation                   = {0.f, 0.f, -90.f};
-        trans.scale                      = {5.f, 1.f, 30.f};
+        trans.position                   = {-15., 2.5f, 0.f};
+        trans.rotation                   = {90.f, 90.f, 0.f};
+        trans.scale                      = {30.f, 1.f, 5.f};
         CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = textureBrick;
+        mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // right wall (+x)
     {
         auto e                           = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh = meshGrid;
         CTransform& trans                = mRegistry.emplace<CTransform>(e);
-        trans.position                   = {15.f, 2.5f, 0.f};
-        trans.rotation                   = {0.f, 0.f, 90.f};
-        trans.scale                      = {5.f, 1.f, 30.f};
+        trans.position                   = {15., 2.5f, 0.f};
+        trans.rotation                   = {90.f, -90.f, 0.f};
+        trans.scale                      = {30.f, 1.f, 5.f};
         CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = textureBrick;
+        mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // back wall (-z)
     {
@@ -222,6 +233,8 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = textureBrick;
+        mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // front wall (+z)
     {
@@ -235,6 +248,8 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = textureBrick;
+        mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
 
     // cubes
@@ -246,6 +261,7 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                            = texture;
     }
     {
         auto e                                    = mRegistry.create();
@@ -255,6 +271,7 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                            = texture;
     }
     {
         auto e                                    = mRegistry.create();
@@ -264,8 +281,9 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                            = texture;
     }
-    auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 position){
+    auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 position) {
         // cylinder
         {
             auto e                                    = mRegistry.create();
@@ -275,39 +293,41 @@ void TestLayer1::onAttach() {
             mat.ambient                               = {1.0f, 0.0f, 1.0f, 1.0f};
             mat.diffuse                               = {1.0f, 0.0f, 1.0f, 1.0f};
             mat.specular                              = {1.0f, 0.0f, 1.0f, 1.0f};
+            mat.diffuseMap                            = texture;
         }
         // sphere
         {
             auto e                                    = mRegistry.create();
             mRegistry.emplace<CMesh>(e).mesh          = meshGeoSphere;
-            mRegistry.emplace<CTransform>(e).position = {position.x, position.y+1, position.z};
+            mRegistry.emplace<CTransform>(e).position = {position.x, position.y + 1, position.z};
             auto& mat                                 = mRegistry.emplace<CMaterial>(e);
             mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
             mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
             mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+            mat.diffuseMap                            = texture;
         }
     };
-    createCynlinderAndSphere({9.0f, 1.0f,  5.0f});
-    createCynlinderAndSphere({9.0f, 1.0f,  0.0f});
+    createCynlinderAndSphere({9.0f, 1.0f, 5.0f});
+    createCynlinderAndSphere({9.0f, 1.0f, 0.0f});
     createCynlinderAndSphere({9.0f, 1.0f, -5.0f});
-    createCynlinderAndSphere({-9.0f, 1.0f,  5.0f});
-    createCynlinderAndSphere({-9.0f, 1.0f,  0.0f});
+    createCynlinderAndSphere({-9.0f, 1.0f, 5.0f});
+    createCynlinderAndSphere({-9.0f, 1.0f, 0.0f});
     createCynlinderAndSphere({-9.0f, 1.0f, -5.0f});
     createCynlinderAndSphere({-3.0f, 1.0f, -7.0f});
-    createCynlinderAndSphere({ 0.0f, 1.0f, -7.0f});
-    createCynlinderAndSphere({ 3.0f, 1.0f, -7.0f});
+    createCynlinderAndSphere({0.0f, 1.0f, -7.0f});
+    createCynlinderAndSphere({3.0f, 1.0f, -7.0f});
 
     // lights
     {
-        auto e = mRegistry.create();
+        auto e                                    = mRegistry.create();
         mRegistry.emplace<CTransform>(e).position = {0, 8, 0};
-        auto& light = mRegistry.emplace<CPointLight>(e);
-        light.ambient   = {0.2, 0.2, 0.2};
-        light.diffuse   = {1.0, 1.0, 1.0};
-        light.specular  = {1.0, 1.0, 1.0};
-        light.constant  = 1.0f;
-        light.linear    = 0.009f;
-        light.quadratic = 0.0032f;
+        auto& light                               = mRegistry.emplace<CPointLight>(e);
+        light.ambient                             = {0.2, 0.2, 0.2};
+        light.diffuse                             = {1.0, 1.0, 1.0};
+        light.specular                            = {1.0, 1.0, 1.0};
+        light.constant                            = 1.0f;
+        light.linear                              = 0.009f;
+        light.quadratic                           = 0.0032f;
     }
     // sphere at light pisition
     {
@@ -318,9 +338,8 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.diffuseMap                            = texture;
     }
-
-
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -376,7 +395,6 @@ void TestLayer1::onAttach() {
     pipelineFullScreen =
         VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
 
-    texture     = createTextureFromFile("./data/container.png");
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
         VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -398,6 +416,14 @@ void TestLayer1::onDetach() {
     vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
+
+    vmaDestroyImage(VulkanContext::getVmaAllocator(), textureBrick.image, texture.allocation);
+    vkDestroyImageView(VulkanContext::getDevice(), textureBrick.view, nullptr);
+    vkDestroySampler(VulkanContext::getDevice(), textureBrick.sampler, nullptr);
+
+    vmaDestroyImage(VulkanContext::getVmaAllocator(), textureFloor.image, texture.allocation);
+    vkDestroyImageView(VulkanContext::getDevice(), textureFloor.view, nullptr);
+    vkDestroySampler(VulkanContext::getDevice(), textureFloor.sampler, nullptr);
 
     vmaDestroyImage(VulkanContext::getVmaAllocator(), depthBuffer.image, depthBuffer.allocation);
     vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
@@ -516,7 +542,7 @@ void TestLayer1::onUpdate(float timeStep) {
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
         }
 
-        mSceneRenderer->render(&mRegistry, frameData.commandBuffer, texture,
+        mSceneRenderer->render(&mRegistry, frameData.commandBuffer,
                                cameraController.getProjectonMatrix(),
                                cameraController.getViewMatrix(), cameraController.getPosition());
     }

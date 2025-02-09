@@ -35,9 +35,10 @@ struct PushData {
     glm::vec4 ambient;
     glm::vec4 diffuse;
     glm::vec4 specular;
+    glm::vec2 texScale;
     float shininess;
 };
-static_assert(sizeof(PushData) == sizeof(float) * 29);
+static_assert(sizeof(PushData) == sizeof(float) * 31);
 
 SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
@@ -51,13 +52,9 @@ SceneRenderer::SceneRenderer() {
         mFragMeshShader = VulkanContext::createShaderModule(spirv_mesh_frag_glsl);
         mMeshPipeline =
             VulkanContext::createGraphicPipeline(mVertMeshShader, mFragMeshShader, true, true, true);
-        mMeshPipelineDescriptorSet0 =
-            mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
 
         VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.descriptorSetLayout[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
                                           "MeshPipelineDescriptorSet0Layout");
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipelineDescriptorSet0, VK_OBJECT_TYPE_DESCRIPTOR_SET,
-                                          "MeshPipelineDescriptorSet0");
         VulkanContext::setDebugObjectName((uint64_t)mVertMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
                                           "VertMeshShader");
         VulkanContext::setDebugObjectName((uint64_t)mFragMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
@@ -66,9 +63,6 @@ SceneRenderer::SceneRenderer() {
                                           "meshPipeline");
         VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.pipelineLayout,
                                           VK_OBJECT_TYPE_PIPELINE_LAYOUT, "meshpipelineLayout");
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipelineDescriptorSet0,
-                                          VK_OBJECT_TYPE_DESCRIPTOR_SET,
-                                          "meshPipelineDescriptorSet0");
     }
 }
 
@@ -84,7 +78,6 @@ SceneRenderer::~SceneRenderer() {
 
 void SceneRenderer::render(entt::registry*  registry,
                            VkCommandBuffer  cmd,
-                           Texture          texture,
                            const glm::mat4& proj,
                            const glm::mat4& view,
                            const glm::vec3& viewPosition) {
@@ -127,43 +120,51 @@ void SceneRenderer::render(entt::registry*  registry,
         vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mMeshPipeline.pipeline);
 
-        VkDescriptorBufferInfo bufferInfo[2];
-        bufferInfo[0].buffer = mPerFrameBuffer.buffer;
-        bufferInfo[0].offset = 0;
-        bufferInfo[0].range  = VK_WHOLE_SIZE;
-        bufferInfo[1].buffer = mLightDataBuffer.buffer;
-        bufferInfo[1].offset = 0;
-        bufferInfo[1].range  = VK_WHOLE_SIZE;
-
-        VkDescriptorImageInfo descriptorImageInfo;
-        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-        descriptorImageInfo.imageView   = texture.view;
-        descriptorImageInfo.sampler     = texture.sampler;
-
-        VkWriteDescriptorSet writeDescriptorSet[3]{};
-        writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[0].dstSet          = mMeshPipelineDescriptorSet0;
-        writeDescriptorSet[0].dstBinding      = 0;
-        writeDescriptorSet[0].descriptorCount = 1;
-        writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet[0].pBufferInfo     = bufferInfo;
-        writeDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[1].dstSet          = mMeshPipelineDescriptorSet0;
-        writeDescriptorSet[1].dstBinding      = 1;
-        writeDescriptorSet[1].descriptorCount = 1;
-        writeDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSet[1].pBufferInfo     = &bufferInfo[1];
-        writeDescriptorSet[2].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSet[2].dstSet          = mMeshPipelineDescriptorSet0;
-        writeDescriptorSet[2].dstBinding      = 2;
-        writeDescriptorSet[2].descriptorCount = 1;
-        writeDescriptorSet[2].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writeDescriptorSet[2].pImageInfo      = &descriptorImageInfo;
-        vkUpdateDescriptorSets(VulkanContext::getDevice(), 3, writeDescriptorSet, 0, nullptr);
-
         PushData pushData{};
         auto view           = mRegistry->view<CTransform, CMesh, CMaterial>();
         for (auto [entity, ctrans, cmesh, cmat] : view.each()) {
+
+            if(cmat.descriptorSet == VK_NULL_HANDLE) {
+                cmat.descriptorSet = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
+
+                VkDescriptorBufferInfo bufferInfo[2];
+                bufferInfo[0].buffer = mPerFrameBuffer.buffer;
+                bufferInfo[0].offset = 0;
+                bufferInfo[0].range  = VK_WHOLE_SIZE;
+                bufferInfo[1].buffer = mLightDataBuffer.buffer;
+                bufferInfo[1].offset = 0;
+                bufferInfo[1].range  = VK_WHOLE_SIZE;
+
+                VkWriteDescriptorSet writeDescriptorSet[3]{};
+                writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writeDescriptorSet[0].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet[0].dstBinding      = 0;
+                writeDescriptorSet[0].descriptorCount = 1;
+                writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writeDescriptorSet[0].pBufferInfo     = bufferInfo;
+                writeDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writeDescriptorSet[1].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet[1].dstBinding      = 1;
+                writeDescriptorSet[1].descriptorCount = 1;
+                writeDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writeDescriptorSet[1].pBufferInfo     = &bufferInfo[1];
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 2, writeDescriptorSet, 0, nullptr);
+
+                VkDescriptorImageInfo descriptorImageInfo;
+                descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                descriptorImageInfo.imageView   = cmat.diffuseMap.view;
+                descriptorImageInfo.sampler     = cmat.diffuseMap.sampler;
+
+                VkWriteDescriptorSet writeDescriptorSet2[1]{};
+                writeDescriptorSet2[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writeDescriptorSet2[0].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet2[0].dstBinding      = 2;
+                writeDescriptorSet2[0].descriptorCount = 1;
+                writeDescriptorSet2[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writeDescriptorSet2[0].pImageInfo      = &descriptorImageInfo;
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
+            }
+
             auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
             auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
             auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
@@ -172,10 +173,11 @@ void SceneRenderer::render(entt::registry*  registry,
             pushData.diffuse   = cmat.diffuse;
             pushData.specular  = cmat.specular;
             pushData.shininess = cmat.shininess;
+            pushData.texScale  = cmat.texScale;
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     mMeshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
-                                    &mMeshPipelineDescriptorSet0, 0, nullptr);
+                                    &cmat.descriptorSet, 0, nullptr);
 
             vkCmdPushConstants(cmd, mMeshPipeline.pipelineLayout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
