@@ -19,12 +19,19 @@ layout( set=0, binding=0, std140 ) uniform PerFrameData {
     vec4 ambientLight;
 };
 
-layout( set=0, binding=1, std140 ) uniform LightData {
-    vec4  direction;
+struct PointLight {
+    vec4  position;
     vec4  ambient;
     vec4  diffuse;
     vec4  specular;
-} light;
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+layout( set=0, binding=1, std140 ) uniform LightData {
+    PointLight light;
+};
 
 layout (set = 0, binding = 2) uniform sampler2D sampler0;
 
@@ -37,7 +44,42 @@ layout( push_constant, std140 ) uniform constants {
 } push;
 
 
+vec4 CalcPointLight(PointLight light, vec3 normal, vec3 pos, vec3 viewDir) {
+    // light position, from fragment to light
+    vec3 lightDir = normalize(light.position.xyz - inPosition);
+
+    float distance    = length(light.position - vec4(inPosition, 1.0f));
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
+    // ambient
+    vec4 ambient = light.ambient * push.ambient * texture(sampler0, inTex);
+
+    // diffuse
+    // If the angle between both vectors is greater than 90 degrees then the
+    // result of the dot product will actually become negative and we end up
+    // with a negative diffuse component.
+    float diffuseFactor = max(dot(normal, lightDir), 0.0);
+    vec4  diffuse       = light.diffuse * (diffuseFactor * push.diffuse * texture(sampler0, inTex));
+
+    // specular
+    vec3  reflectDir      = reflect(-lightDir, normal);
+    float specularFactor  = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+    vec4  specular        = light.specular * (specularFactor * push.specular);
+
+    ambient  *= attenuation;
+    diffuse  *= attenuation;
+    specular *= attenuation;
+    vec4 color =  ambient + diffuse + specular;
+
+    return color;
+}
+
 void main() {
+    vec3 normal  = normalize(inNormal);
+    vec3 viewDir = normalize(viewPosition - inPosition);
+    vec4 result  = CalcPointLight(light, normal, inPosition, viewDir);
+    outColor =  result;
+#if 0
     vec3 normal   = normalize(inNormal);
     // revert the light direction
     // Shader expect the light direction comming from the light source.
@@ -45,7 +87,7 @@ void main() {
     vec3 lightDir = -light.direction.xyz;
 
     // ambient
-    vec4 ambient = light.ambient * push.ambient;
+    vec4 ambient = light.ambient * push.ambient * texture(sampler0, inTex);
 
     // diffuse
     // If the angle between both vectors is greater than 90 degrees then the
@@ -61,4 +103,5 @@ void main() {
     vec4  specular        = light.specular * (specularFactor * push.specular);
 
     outColor = ambient + diffuse + specular;
+#endif
 }

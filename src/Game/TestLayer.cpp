@@ -297,16 +297,31 @@ void TestLayer1::onAttach() {
     createCynlinderAndSphere({ 0.0f, 1.0f, -7.0f});
     createCynlinderAndSphere({ 3.0f, 1.0f, -7.0f});
 
-    // sphere
+    // lights
+    {
+        auto e = mRegistry.create();
+        mRegistry.emplace<CTransform>(e).position = {0, 8, 0};
+        auto& light = mRegistry.emplace<CPointLight>(e);
+        light.ambient   = {0.2, 0.2, 0.2};
+        light.diffuse   = {1.0, 1.0, 1.0};
+        light.specular  = {1.0, 1.0, 1.0};
+        light.constant  = 1.0f;
+        light.linear    = 0.009f;
+        light.quadratic = 0.0032f;
+    }
+    // sphere at light pisition
     {
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
-        mRegistry.emplace<CTransform>(e).position = {7, .5, 5};
+        mRegistry.emplace<CTransform>(e).position = {0, 5, 0};
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
     }
+
+
+
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
                                               SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);

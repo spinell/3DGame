@@ -20,12 +20,15 @@ struct PerFrameData {
 static_assert(sizeof(PerFrameData) == sizeof(float) * 40);
 
 struct LightData {
-    glm::vec4 direction;
+    glm::vec4 position;
     glm::vec4 ambient;
     glm::vec4 diffuse;
     glm::vec4 specular;
+    float constant;
+    float linear;
+    float quadratic;
 };
-static_assert(sizeof(LightData) == sizeof(float) * 16);
+static_assert(sizeof(LightData) == sizeof(float) * 19);
 
 struct PushData {
     glm::mat4 model;
@@ -102,15 +105,21 @@ void SceneRenderer::render(entt::registry*  registry,
     }
 
     {
-        LightData lightData{};
-        lightData.ambient   = {0.2f, 0.2f, 0.2f, 1.0f};
-        lightData.diffuse   = {0.5f, 0.5f, 0.5f, 1.0f};
-        lightData.specular  = {0.5f, 0.5f, 0.5f, 1.0f};
-        lightData.direction = glm::normalize(glm::vec4(0.0f, -1.0f, 1.0f, 0.0f));
-        void* pData{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
-        std::memcpy(pData, &lightData, sizeof(lightData));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
+        auto view           = mRegistry->view<CTransform, CPointLight>();
+        for (auto [entity, ctrans, pointLight] : view.each()) {
+            LightData lightData{};
+            lightData.position = glm::vec4(ctrans.position, 1.0f);
+            lightData.ambient   = glm::vec4(pointLight.ambient, 1.0f);
+            lightData.diffuse   = glm::vec4(pointLight.diffuse, 1.0f);
+            lightData.specular  = glm::vec4(pointLight.specular, 1.0f);
+            lightData.constant  = pointLight.constant;
+            lightData.linear    = pointLight.linear;
+            lightData.quadratic = pointLight.quadratic;
+            void* pData{};
+            vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
+            std::memcpy(pData, &lightData, sizeof(lightData));
+            vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
+        }
     }
 
     // render scene

@@ -22,6 +22,15 @@ struct CMaterial {
     float     shininess = 32;
 };
 
+struct CPointLight {
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    float constant;
+    float linear;
+    float quadratic;
+};
+
 class SceneRenderer {
 public:
     SceneRenderer();
