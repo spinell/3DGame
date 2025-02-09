@@ -33,7 +33,7 @@ layout( set=0, binding=1, std140 ) uniform LightData {
     PointLight light;
 };
 
-layout (set = 0, binding = 2) uniform sampler2D sampler0;
+layout (set = 1, binding = 2) uniform sampler2D sampler0;
 
 layout( push_constant, std140 ) uniform constants {
     mat4  model;

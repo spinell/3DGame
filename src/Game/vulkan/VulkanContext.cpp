@@ -394,44 +394,62 @@ Shader createShaderModule(std::span<const uint32_t> spirv) {
 }
 
 std::vector<VkDescriptorSetLayout> createDescriptorSetLayout(Shader vert, Shader frag) {
+    //
     // merge all bingdings
-    std::vector<VkDescriptorSetLayoutBinding> mergedBindings;
-    mergedBindings.reserve(vert.descriptorSetLayoutBinding.size() +
-                           frag.descriptorSetLayoutBinding.size());
-    mergedBindings.insert_range(mergedBindings.end(), vert.descriptorSetLayoutBinding);
-    mergedBindings.insert_range(mergedBindings.end(), frag.descriptorSetLayoutBinding);
+    //
+    std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> mergedBindings;
 
-    // remove duplicate binding + merge shader stage
-    std::vector<VkDescriptorSetLayoutBinding> uniqueBindings;
-    for (auto& binding : mergedBindings) {
-        auto it =
-            std::ranges::find_if(uniqueBindings, [&binding](const VkDescriptorSetLayoutBinding& b) {
-                return b.binding == binding.binding;
-            });
-        if (it == uniqueBindings.end()) {
-            uniqueBindings.push_back(binding);
-        } else {
-            it->stageFlags |= binding.stageFlags;
+    std::initializer_list<Shader> shaders = {vert, frag};
+    for(const auto& shader : shaders) {
+        for(auto& [setIdx, bindings] : shader.descriptorSetLayoutBinding) {
+            for(auto& [bindingIdx, binding] : bindings) {
+                auto it = mergedBindings[setIdx].emplace(bindingIdx, binding);
+                if(!it.second) {
+                    it.first->second.stageFlags |= binding.stageFlags;
+                }
+            }
         }
     }
+#if 0
+    // remove duplicate binding + merge shader stage
+    std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> uniqueBindings;
+    for (auto& [setIdx, bindings] : mergedBindings) {
+        uniqueBindings.emplace(setIdx, std::vector<VkDescriptorSetLayoutBinding>{});
+
+        for (auto& binding : bindings) {
+            auto it =
+                std::ranges::find_if(bindings, [&binding](const VkDescriptorSetLayoutBinding& b) {
+                    return b.binding == binding.binding;
+                });
+            if (it == uniqueBindings[setIdx].end()) {
+                uniqueBindings[setIdx].push_back(binding);
+            } else {
+                it->stageFlags |= binding.stageFlags;
+            }
+        }
+    }
+#endif
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts{};
-    if (uniqueBindings.size()) {
+#if 1
+    for (const auto& [setIdx, bindings] : mergedBindings) {
+        std::vector<VkDescriptorSetLayoutBinding> b;
+
+        for (const auto& [bindingIdx, binding] : bindings) {
+            b.push_back(binding);
+        }
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         descriptorSetLayoutCreateInfo.pNext = nullptr;
-        descriptorSetLayoutCreateInfo.flags =
-            0; // VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
-        descriptorSetLayoutCreateInfo.bindingCount = uniqueBindings.size();
-        descriptorSetLayoutCreateInfo.pBindings    = uniqueBindings.data();
+        descriptorSetLayoutCreateInfo.flags = 0; // VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+        descriptorSetLayoutCreateInfo.bindingCount = b.size();
+        descriptorSetLayoutCreateInfo.pBindings    = b.data();
 
         VkDescriptorSetLayout descriptorSetLayout{};
-        vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr,
-                                    &descriptorSetLayout);
-
+        vkCreateDescriptorSetLayout(sDevice, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
         descriptorSetLayouts.push_back(descriptorSetLayout);
     }
-
+#endif
     return descriptorSetLayouts;
 }
 
@@ -464,6 +482,7 @@ VkPipelineLayout createPipelineLayout(uint32_t               setLayoutCount,
     return layout;
 }
 
+#if 0
 VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
     std::array<VkPushConstantRange, 2> pushConstantRange;
     uint32_t                           nbPushRange = 0;
@@ -514,7 +533,7 @@ VkPipelineLayout createPipelineLayout(Shader vert, Shader frag) {
     return createPipelineLayout(descriptorSetLayout != nullptr ? 1 : 0, &descriptorSetLayout,
                                 nbPushRange, pushConstantRange.data());
 }
-
+#endif
 GraphicPipeline createGraphicPipeline(Shader vert, Shader frag, bool enableDepthTest, bool vertexLayout, bool cull) {
     VkPipelineShaderStageCreateInfo shaderStages[2]{};
     shaderStages[0] = vert.stageCreateInfo;

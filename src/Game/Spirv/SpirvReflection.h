@@ -2,6 +2,7 @@
 #include "../vulkan/vulkan.h"
 #include <span>
 #include <vector>
+#include <map>
 
 class SpirvReflection {
 public:
@@ -18,11 +19,11 @@ public:
         return mPushConstantRange;
     }
 
-    const std::vector<VkDescriptorSetLayoutBinding>& getDescriptorSetLayoutBinding() const {
+    const std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>>& getDescriptorSetLayoutBinding() const {
         return mDescriptorSetLayoutBinding;
     }
 private:
     VkShaderStageFlagBits mShaderStage{};
     VkPushConstantRange   mPushConstantRange{};
-    std::vector<VkDescriptorSetLayoutBinding> mDescriptorSetLayoutBinding;
+    std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> mDescriptorSetLayoutBinding;
 };

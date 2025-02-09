@@ -91,7 +91,8 @@ void SpirvReflection::reflect(std::span<const uint32_t> spirv) {
             descriptorSetLayoutBinding.descriptorCount = binding->count;
             descriptorSetLayoutBinding.stageFlags      = module.shader_stage;
             descriptorSetLayoutBinding.pImmutableSamplers;
-            mDescriptorSetLayoutBinding.push_back(descriptorSetLayoutBinding);
+            auto& set = mDescriptorSetLayoutBinding[binding->set];
+            set[binding->binding] = descriptorSetLayoutBinding;
         }
     }
 

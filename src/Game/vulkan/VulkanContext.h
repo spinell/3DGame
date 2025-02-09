@@ -4,12 +4,13 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <map>
 
 struct Shader {
     VkShaderModule                            shaderModule{};
     VkPipelineShaderStageCreateInfo           stageCreateInfo{};
     VkPushConstantRange                       pushConstantRange{};
-    std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBinding;
+    std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> descriptorSetLayoutBinding;
 };
 struct GraphicPipeline {
     VkPipeline                         pipeline{};

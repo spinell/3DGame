@@ -124,8 +124,9 @@ void SceneRenderer::render(entt::registry*  registry,
         auto view           = mRegistry->view<CTransform, CMesh, CMaterial>();
         for (auto [entity, ctrans, cmesh, cmat] : view.each()) {
 
-            if(cmat.descriptorSet == VK_NULL_HANDLE) {
-                cmat.descriptorSet = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
+            if(cmat.descriptorSet1 == VK_NULL_HANDLE) {
+                cmat.descriptorSet0 = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
+                cmat.descriptorSet1 = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[1]);
 
                 VkDescriptorBufferInfo bufferInfo[2];
                 bufferInfo[0].buffer = mPerFrameBuffer.buffer;
@@ -137,13 +138,13 @@ void SceneRenderer::render(entt::registry*  registry,
 
                 VkWriteDescriptorSet writeDescriptorSet[3]{};
                 writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writeDescriptorSet[0].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet[0].dstSet          = cmat.descriptorSet0;
                 writeDescriptorSet[0].dstBinding      = 0;
                 writeDescriptorSet[0].descriptorCount = 1;
                 writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 writeDescriptorSet[0].pBufferInfo     = bufferInfo;
                 writeDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writeDescriptorSet[1].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet[1].dstSet          = cmat.descriptorSet0;
                 writeDescriptorSet[1].dstBinding      = 1;
                 writeDescriptorSet[1].descriptorCount = 1;
                 writeDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -157,7 +158,7 @@ void SceneRenderer::render(entt::registry*  registry,
 
                 VkWriteDescriptorSet writeDescriptorSet2[1]{};
                 writeDescriptorSet2[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writeDescriptorSet2[0].dstSet          = cmat.descriptorSet;
+                writeDescriptorSet2[0].dstSet          = cmat.descriptorSet1;
                 writeDescriptorSet2[0].dstBinding      = 2;
                 writeDescriptorSet2[0].descriptorCount = 1;
                 writeDescriptorSet2[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -177,8 +178,10 @@ void SceneRenderer::render(entt::registry*  registry,
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     mMeshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
-                                    &cmat.descriptorSet, 0, nullptr);
-
+                                    &cmat.descriptorSet0, 0, nullptr);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    mMeshPipeline.pipelineLayout, 1 /*firstSet*/, 1 /*nbSet*/,
+                                    &cmat.descriptorSet1, 0, nullptr);
             vkCmdPushConstants(cmd, mMeshPipeline.pipelineLayout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                sizeof(pushData), reinterpret_cast<void*>(&pushData));
