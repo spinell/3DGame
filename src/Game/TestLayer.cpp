@@ -24,6 +24,9 @@
 #include <spirv_fullscreen_quad_frag_glsl.h>
 #include <spirv_fullscreen_quad_vert_glsl.h>
 
+#include <spirv_mesh_frag_glsl.h>
+#include <spirv_mesh_vert_glsl.h>
+
 #include <array>
 #include <filesystem>
 

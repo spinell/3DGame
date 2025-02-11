@@ -6,6 +6,7 @@
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+#include <memory>
 
 struct CTransform {
     glm::vec3 position = {0.f, 0.f, 0.f};
@@ -57,8 +58,7 @@ private:
 
     Buffer               mPerFrameBuffer;
     Buffer               mLightDataBuffer;
-    Shader               mVertMeshShader;
-    Shader               mFragMeshShader;
+    std::shared_ptr<VulkanShaderProgram>  mMeshShader;
     GraphicPipeline      mMeshPipeline;
     VulkanDescriptorPool mDescriptorPool;
 };

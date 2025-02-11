@@ -55,13 +55,13 @@ void SpirvReflection::reflect(std::span<const uint32_t> spirv) {
                 ENGINE_CORE_DEBUG(" Name: {} set({}) binding({}) {}", binding->name, binding->set, binding->binding, string_VkDescriptorType((VkDescriptorType)binding->descriptor_type));
 
                 const SpvReflectBlockVariable& block = binding->block;
-                ENGINE_CORE_DEBUG(" block name            : {}", block.name);
-                ENGINE_CORE_DEBUG(" block offset          : {}", block.offset);
-                ENGINE_CORE_DEBUG(" block absolute_offset : {}", block.absolute_offset);
-                ENGINE_CORE_DEBUG(" block size            : {}", block.size);
-                ENGINE_CORE_DEBUG(" block padded_size     : {}", block.padded_size);
-                ENGINE_CORE_DEBUG(" block flags           : {}", block.flags);
-                ENGINE_CORE_DEBUG(" block decoration_flags: {}", block.decoration_flags);
+                //ENGINE_CORE_DEBUG(" block name            : {}", block.name);
+                //ENGINE_CORE_DEBUG(" block offset          : {}", block.offset);
+                //ENGINE_CORE_DEBUG(" block absolute_offset : {}", block.absolute_offset);
+                //ENGINE_CORE_DEBUG(" block size            : {}", block.size);
+                //ENGINE_CORE_DEBUG(" block padded_size     : {}", block.padded_size);
+                //ENGINE_CORE_DEBUG(" block flags           : {}", block.flags);
+                //ENGINE_CORE_DEBUG(" block decoration_flags: {}", block.decoration_flags);
 
                 for (uint32_t memberIdx = 0; memberIdx < block.member_count; memberIdx++) {
                     const SpvReflectBlockVariable& var = block.members[memberIdx];

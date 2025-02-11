@@ -3,6 +3,7 @@
 #include "Renderer.h"
 
 #include "vulkan/VulkanContext.h"
+#include "vulkan/VulkanShaderProgram.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -43,22 +44,26 @@ static_assert(sizeof(PushData) == sizeof(float) * 31);
 SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
 
+        //mMeshShader = VulkanShaderProgram::CreateFromSpirv({"D:/shaders_test/glslang/mesh.vert.glsl.spv", "D:/shaders_test/glslang/mesh.frag.glsl.spv"});
+        mMeshShader = VulkanShaderProgram::CreateFromSpirv({spirv_mesh_vert_glsl, spirv_mesh_frag_glsl});
+        bool a = mMeshShader->hasShaderStage(VK_SHADER_STAGE_VERTEX_BIT);
+        bool b = mMeshShader->hasShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT);
+        bool c = mMeshShader->hasPushConstant();
+
+
     // Mesh pipeline
     {
         mPerFrameBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(PerFrameData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         mLightDataBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(LightData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-        mVertMeshShader = VulkanContext::createShaderModule(spirv_mesh_vert_glsl);
-        mFragMeshShader = VulkanContext::createShaderModule(spirv_mesh_frag_glsl);
         mMeshPipeline =
-            VulkanContext::createGraphicPipeline(mVertMeshShader, mFragMeshShader, true, true, true);
+            VulkanContext::createGraphicPipeline(mMeshShader, true, true, true);
 
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.descriptorSetLayout[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
-                                          "MeshPipelineDescriptorSet0Layout");
-        VulkanContext::setDebugObjectName((uint64_t)mVertMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
-                                          "VertMeshShader");
-        VulkanContext::setDebugObjectName((uint64_t)mFragMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
-                                          "FragMeshShader");
+        //VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.descriptorSetLayout[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+        //                                  "MeshPipelineDescriptorSet0Layout");
+        //VulkanContext::setDebugObjectName((uint64_t)mVertMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
+        //                                  "VertMeshShader");
+        //VulkanContext::setDebugObjectName((uint64_t)mFragMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
+        //                                  "FragMeshShader");
         VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.pipeline, VK_OBJECT_TYPE_PIPELINE,
                                           "meshPipeline");
         VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.pipelineLayout,
@@ -69,11 +74,10 @@ SceneRenderer::SceneRenderer() {
 SceneRenderer::~SceneRenderer() {
     mDescriptorPool.destroy();
 
-    vkDestroyShaderModule(VulkanContext::getDevice(), mVertMeshShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), mFragMeshShader.shaderModule, nullptr);
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mPerFrameBuffer.buffer, mPerFrameBuffer.allocation);
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mLightDataBuffer.buffer, mLightDataBuffer.allocation);
     mMeshPipeline.destroy();
+    mMeshShader.reset();
 }
 
 void SceneRenderer::render(entt::registry*  registry,

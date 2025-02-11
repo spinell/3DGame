@@ -1,5 +1,6 @@
 #pragma once
 #include "vulkan.h"
+#include "VulkanShaderProgram.h"
 
 #include <span>
 #include <string>
@@ -68,7 +69,10 @@ void                          copyBufferToImage(
                                                      bool   enableDepthTest = false,
                                                      bool   vertexLayout    = false,
                                                      bool   cull = false);
-
+[[nodiscard]] GraphicPipeline  createGraphicPipeline(std::shared_ptr<VulkanShaderProgram> shader,
+                                                     bool   enableDepthTest = false,
+                                                     bool   vertexLayout    = false,
+                                                     bool   cull = false);
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
                                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
