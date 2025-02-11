@@ -36,10 +36,10 @@ public:
     static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromString(std::string source);
 
     /// @brief
-    /// @param path
+    /// @param paths
     /// @return
     static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromFile(
-        std::filesystem::path path);
+        std::vector<std::filesystem::path> paths);
 
     VulkanShaderProgram() = default;
     ~VulkanShaderProgram();

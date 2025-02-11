@@ -64,6 +64,7 @@ target_link_libraries(Game
         GPUOpen::VulkanMemoryAllocator
         Vulkan::Vulkan
         Vulkan::Headers
+        Vulkan::shaderc_combined
         unofficial::spirv-reflect
         glm::glm-header-only
         EnTT::EnTT
