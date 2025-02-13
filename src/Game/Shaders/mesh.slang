@@ -27,7 +27,8 @@ struct PushData {
 
 [[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
 [[vk::binding(1, 0)]] ConstantBuffer<PointLight> light;
-[[vk::binding(2, 1)]] Sampler2D sampler0;
+[[vk::binding(2, 1)]] Sampler2D diffuseMap;
+[[vk::binding(3, 1)]] Sampler2D specularMap;
 [vk::push_constant]   PushData push;
 
 struct VSInput {
@@ -70,24 +71,24 @@ float4 CalcPointLight(PointLight light, float3 normal, float3 pos, float3 viewDi
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
 
     // ambient
-    float4 ambient = light.ambient * push.ambient * sampler0.Sample(outTex);
+    float3 ambient = light.ambient.rgb * push.ambient.rgb * diffuseMap.Sample(outTex).rgb;
 
     // diffuse
     // If the angle between both vectors is greater than 90 degrees then the
     // result of the dot product will actually become negative and we end up
     // with a negative diffuse component.
     float diffuseFactor = max(dot(normal, lightDir), 0.0);
-    float4 diffuse = light.diffuse * (diffuseFactor * push.diffuse * sampler0.Sample(outTex));
+    float3 diffuse = light.diffuse.rgb * (diffuseFactor * push.diffuse.rgb * diffuseMap.Sample(outTex).rgb);
 
     // specular
     float3 reflectDir = reflect(-lightDir, normal);
     float specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
-    float4 specular = light.specular * (specularFactor * push.specular);
+    float3 specular = light.specular.rgb * specularFactor * specularMap.Sample(outTex).rgb;
 
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
-    float4 color = ambient + diffuse + specular;
+    float4 color = float4(ambient + diffuse + specular, 1.0f);
 
     return color;
 }
@@ -99,5 +100,8 @@ PSOutput ps_main(const VSOutput input) {
     float4 result = CalcPointLight(light, normal, input.outPosition, viewDir, input.outTex);
     PSOutput output;
     output.color = result; //sampler0.Sample(input.outTex) * light.ambient;
+
+    float gamma = 2.2;
+    output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
     return output;
 }

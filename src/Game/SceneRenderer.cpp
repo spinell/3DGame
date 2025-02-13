@@ -166,6 +166,12 @@ void SceneRenderer::render(entt::registry*  registry,
                 writeDescriptorSet2[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 writeDescriptorSet2[0].pImageInfo      = &descriptorImageInfo;
                 vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
+
+                descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                descriptorImageInfo.imageView   = cmat.specularMap.view;
+                descriptorImageInfo.sampler     = cmat.specularMap.sampler;
+                writeDescriptorSet2[0].dstBinding =3;
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
             }
 
             auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
