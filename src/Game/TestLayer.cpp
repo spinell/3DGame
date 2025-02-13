@@ -10,6 +10,7 @@
 #include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanUtils.h"
+#include "vulkan/VulkanShaderProgram.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -21,11 +22,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <imgui.h>
-#include <spirv_fullscreen_quad_frag_glsl.h>
-#include <spirv_fullscreen_quad_vert_glsl.h>
-
-#include <spirv_mesh_frag_glsl.h>
-#include <spirv_mesh_vert_glsl.h>
 
 #include <array>
 #include <filesystem>
@@ -142,8 +138,7 @@ struct FrameData {
 };
 FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
-Shader           vertFullScreenShader;
-Shader           fragFullScreenShader;
+std::shared_ptr<VulkanShaderProgram> fullScreenShader;
 GraphicPipeline  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
@@ -393,10 +388,9 @@ void TestLayer1::onAttach() {
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
 
-    vertFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_vert_glsl);
-    fragFullScreenShader = VulkanContext::createShaderModule(spirv_fullscreen_quad_frag_glsl);
+    fullScreenShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/fullscreen_vert.spv", "./shaders/fullscreen_frag.spv"});
     pipelineFullScreen =
-        VulkanContext::createGraphicPipeline(vertFullScreenShader, fragFullScreenShader);
+        VulkanContext::createGraphicPipeline(fullScreenShader);
 
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
@@ -432,8 +426,7 @@ void TestLayer1::onDetach() {
     vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
     vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
 
-    vkDestroyShaderModule(VulkanContext::getDevice(), vertFullScreenShader.shaderModule, nullptr);
-    vkDestroyShaderModule(VulkanContext::getDevice(), fragFullScreenShader.shaderModule, nullptr);
+    fullScreenShader.reset();
     pipelineFullScreen.destroy();
 
     delete vulkanSwapchain;

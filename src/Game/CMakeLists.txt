@@ -1,6 +1,17 @@
 find_package(Vulkan REQUIRED COMPONENTS glslc glslangValidator shaderc_combined SPIRV-Tools)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
+find_program(SLANGC_EXE "slangc"
+	DOC "Path to slangc"
+)
+mark_as_advanced(FORCE SLANGC_EXE)
+
+if(SLANGC_EXE)
+  message(STATUS "slangc found: ${SLANGC_EXE}")
+else()
+  message(FATAL_ERROR "slangc not found!")
+endif()
+
 add_executable(Game
     main.cpp
     TestLayer.h
@@ -35,22 +46,6 @@ add_executable(Game
     vulkan/vma/vma_custom_configuration.h
 )
 
-#
-# Add shaders
-#
-target_glsl_shaders(Game
-	CPP_HEADER
-	PRIVATE
-		Shaders/fullscreen_quad.vert.glsl
-		Shaders/fullscreen_quad.frag.glsl
-        Shaders/triangle.vert.glsl
-        Shaders/triangle.frag.glsl
-        Shaders/triangle_tex.vert.glsl
-        Shaders/triangle_tex.frag.glsl
-        Shaders/mesh.vert.glsl
-        Shaders/mesh.frag.glsl
-)
-
 target_include_directories(Game
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/generated
@@ -77,7 +72,54 @@ target_compile_definitions(Game
         GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
+############################################################################################################
+#									Add Shader files
+############################################################################################################
+target_sources(Game
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
+)
 
+add_custom_command(
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_vert.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_frag.spv
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_vert.spv -stage vertex -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_frag.spv -stage pixel  -entry ps_main
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang
+    VERBATIM
+    USES_TERMINAL
+)
+
+add_custom_command(
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_vert.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_frag.spv
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_vert.spv -stage vertex -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_frag.spv -stage pixel  -entry ps_main
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
+    VERBATIM
+    USES_TERMINAL
+)
+
+#
+# Add shaders
+#
+#[[
+target_glsl_shaders(Game
+	CPP_HEADER
+	PRIVATE
+		Shaders/fullscreen_quad.vert.glsl
+		Shaders/fullscreen_quad.frag.glsl
+        Shaders/triangle.vert.glsl
+        Shaders/triangle.frag.glsl
+        Shaders/triangle_tex.vert.glsl
+        Shaders/triangle_tex.frag.glsl
+        Shaders/mesh.vert.glsl
+        Shaders/mesh.frag.glsl
+)
+]]
 ############################################################################################################
 #									Copy shaders and data
 ############################################################################################################

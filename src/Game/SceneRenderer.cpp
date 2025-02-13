@@ -8,8 +8,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
-#include <spirv_mesh_frag_glsl.h>
-#include <spirv_mesh_vert_glsl.h>
 
 struct PerFrameData {
     glm::mat4 projection;
@@ -45,8 +43,7 @@ static_assert(sizeof(PushData) == sizeof(float) * 47);
 SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
 
-        //mMeshShader = VulkanShaderProgram::CreateFromSpirv({"D:/shaders_test/glslang/mesh.vert.glsl.spv", "D:/shaders_test/glslang/mesh.frag.glsl.spv"});
-        mMeshShader = VulkanShaderProgram::CreateFromSpirv({spirv_mesh_vert_glsl, spirv_mesh_frag_glsl});
+        mMeshShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_vert.spv", "./shaders/mesh_frag.spv"});
         bool a = mMeshShader->hasShaderStage(VK_SHADER_STAGE_VERTEX_BIT);
         bool b = mMeshShader->hasShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT);
         bool c = mMeshShader->hasPushConstant();
