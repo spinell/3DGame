@@ -37,6 +37,7 @@ layout (set = 1, binding = 2) uniform sampler2D sampler0;
 
 layout( push_constant, std140 ) uniform constants {
     mat4  model;
+    mat4  normalMatrix;
     vec4  ambient;
     vec4  diffuse;
     vec4  specular;

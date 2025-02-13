@@ -32,14 +32,15 @@ struct LightData {
 static_assert(sizeof(LightData) == sizeof(float) * 19);
 
 struct PushData {
-    glm::mat4 model;
+    glm::mat4 transform;
+    glm::mat4 normalMatrix;
     glm::vec4 ambient;
     glm::vec4 diffuse;
     glm::vec4 specular;
     glm::vec2 texScale;
     float shininess;
 };
-static_assert(sizeof(PushData) == sizeof(float) * 31);
+static_assert(sizeof(PushData) == sizeof(float) * 47);
 
 SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
@@ -173,7 +174,8 @@ void SceneRenderer::render(entt::registry*  registry,
             auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
             auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
             auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
-            pushData.model     = translateMat * rotationMat * scaleMat;
+            pushData.transform     = translateMat * rotationMat * scaleMat;
+            pushData.normalMatrix  = pushData.transform;
             pushData.ambient   = cmat.ambient;
             pushData.diffuse   = cmat.diffuse;
             pushData.specular  = cmat.specular;

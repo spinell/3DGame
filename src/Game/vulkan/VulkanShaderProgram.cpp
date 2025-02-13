@@ -121,7 +121,7 @@ std::shared_ptr<VulkanShaderProgram> VulkanShaderProgram::CreateFromSpirv(
     std::vector<std::vector<uint32_t>> datas;
     for (const auto& s : spirv) {
         auto& data = datas.emplace_back();
-        data.resize(s.size_bytes());
+        data.resize(s.size());
         std::memcpy(data.data(), s.data(), s.size_bytes());
     }
 
