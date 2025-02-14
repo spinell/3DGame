@@ -29,6 +29,7 @@ struct PushData {
 [[vk::binding(1, 0)]] ConstantBuffer<PointLight> light;
 [[vk::binding(2, 1)]] Sampler2D diffuseMap;
 [[vk::binding(3, 1)]] Sampler2D specularMap;
+[[vk::binding(4, 1)]] Sampler2D normalMap;
 [vk::push_constant]   PushData push;
 
 struct VSInput {
@@ -42,6 +43,7 @@ struct VSOutput {
     float4 position : SV_Position;
     float3 outPosition;
     float3 outNormal;
+    float3 outTangent;
     float2 outTex;
 }
 
@@ -57,9 +59,10 @@ VSOutput vs_main(const VSInput input) {
     var worldPos = mul(push.model, float4(input.inPosition, 1.0f));
 
     output.outPosition = worldPos.xyz; // world space position
-    output.outTex = input.inTex * push.texScale;
-    output.outNormal = mul(push.model, float4(input.inNormal, 0)).xyz;
-    output.position = mul(MVP, float4(input.inPosition, 1.0f));
+    output.outTex      = input.inTex * push.texScale;
+    output.outNormal   = mul(push.normalMatrix, float4(input.inNormal, 0)).xyz;
+    output.outTangent  = mul(push.normalMatrix, float4(input.inTangentU, 0)).xyz;
+    output.position    = mul(MVP, float4(input.inPosition, 1.0f));
     return output;
 }
 
@@ -95,13 +98,19 @@ float4 CalcPointLight(PointLight light, float3 normal, float3 pos, float3 viewDi
 
 [Shader("pixel")]
 PSOutput ps_main(const VSOutput input) {
-    float3 normal = normalize(input.outNormal);
-    float3 viewDir = normalize(perFrame.viewPosition - input.outPosition);
-    float4 result = CalcPointLight(light, normal, input.outPosition, viewDir, input.outTex);
-    PSOutput output;
-    output.color = result; //sampler0.Sample(input.outTex) * light.ambient;
+    float3 normal    = normalize(input.outNormal);
+    float3 tangent   = normalize(input.outTangent);
+    float3 biTangent = normalize(cross(tangent, normal));
+    float3x3 TBN = float3x3(tangent, biTangent, normal);
 
-    float gamma = 2.2;
-    output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
+    float3 normalTangentSpace = normalMap.Sample(input.outTex).rgb;
+    normalTangentSpace = normalize(normalTangentSpace * 2 - 1);
+    float3 normalWorldSpace = normalize(mul(normalTangentSpace, TBN));
+    float3 viewDir = normalize(perFrame.viewPosition - input.outPosition);
+    float4 result = CalcPointLight(light, normalWorldSpace, input.outPosition, viewDir, input.outTex);
+    PSOutput output;
+    output.color = result;
+    //float gamma = 2.2;
+    //output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
     return output;
 }

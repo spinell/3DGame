@@ -20,8 +20,9 @@ struct CMaterial {
     glm::vec4 ambient = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     glm::vec4 diffuse = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     Texture   diffuseMap;
-    glm::vec4 specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    Texture   normalMap;
     Texture   specularMap;
+    glm::vec4 specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     float     shininess = 32;
     glm::vec2 texScale  = glm::vec2(1.0f, 1.0f);
     VkDescriptorSet descriptorSet0;

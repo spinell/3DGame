@@ -172,13 +172,19 @@ void SceneRenderer::render(entt::registry*  registry,
                 descriptorImageInfo.sampler     = cmat.specularMap.sampler;
                 writeDescriptorSet2[0].dstBinding =3;
                 vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
+
+                descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                descriptorImageInfo.imageView   = cmat.normalMap.view;
+                descriptorImageInfo.sampler     = cmat.normalMap.sampler;
+                writeDescriptorSet2[0].dstBinding =4;
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
             }
 
             auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
             auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
             auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
             pushData.transform     = translateMat * rotationMat * scaleMat;
-            pushData.normalMatrix  = pushData.transform;
+            pushData.normalMatrix  = glm::transpose(glm::inverse(pushData.transform));
             pushData.ambient   = cmat.ambient;
             pushData.diffuse   = cmat.diffuse;
             pushData.specular  = cmat.specular;

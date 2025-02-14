@@ -207,6 +207,9 @@ std::shared_ptr<VulkanShaderProgram> VulkanShaderProgram::CreateFromSpirv(
                 const SpvReflectDescriptorSet* reflectDescriptorSet =
                     reflectShaderModule.GetDescriptorSet(setIdx);
 
+                if(!reflectDescriptorSet)
+                    continue;
+
                 for (uint32_t bindingIdx = 0; bindingIdx < reflectDescriptorSet->binding_count;
                      bindingIdx++) {
                     const SpvReflectDescriptorBinding* reflectBinding =
