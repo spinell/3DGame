@@ -268,7 +268,8 @@ void VulkanUtils::transitionImageLayout(VkCommandBuffer          cmdBuffer,
                                         VkPipelineStageFlagBits2 srcStageMask,
                                         VkAccessFlagBits2        srcAccessMask,
                                         VkPipelineStageFlagBits2 dstStageMask,
-                                        VkAccessFlagBits2        dstAccessMask) noexcept {
+                                        VkAccessFlagBits2        dstAccessMask,
+                                        uint32_t                 mipmap) noexcept {
     VkImageMemoryBarrier2 memoryBarrier2{};
     memoryBarrier2.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     memoryBarrier2.pNext                           = 0;
@@ -283,7 +284,7 @@ void VulkanUtils::transitionImageLayout(VkCommandBuffer          cmdBuffer,
     memoryBarrier2.image                           = image;
     memoryBarrier2.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     memoryBarrier2.subresourceRange.baseMipLevel   = 0;
-    memoryBarrier2.subresourceRange.levelCount     = 1;
+    memoryBarrier2.subresourceRange.levelCount     = mipmap;
     memoryBarrier2.subresourceRange.baseArrayLayer = 0;
     memoryBarrier2.subresourceRange.layerCount     = 1;
 

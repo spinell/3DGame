@@ -169,6 +169,7 @@ bool isSurfaceSupportExclusiveFullscreen(VkPhysicalDevice physicalDevice,
 /// \param[in] srcAccessMask
 /// \param[in] dstStageMask
 /// \param[in] dstAccessMask
+/// \param[in] mipmap
 /// \return
 void transitionImageLayout(VkCommandBuffer          cmdBuffer,
                            VkImage                  image,
@@ -177,7 +178,8 @@ void transitionImageLayout(VkCommandBuffer          cmdBuffer,
                            VkPipelineStageFlagBits2 srcStageMask,
                            VkAccessFlagBits2        srcAccessMask,
                            VkPipelineStageFlagBits2 dstStageMask,
-                           VkAccessFlagBits2        dstAccessMask) noexcept;
+                           VkAccessFlagBits2        dstAccessMask,
+                           uint32_t                 mipmap) noexcept;
 } // namespace VulkanUtils
 
 #include <vulkan/vk_enum_string_helper.h>

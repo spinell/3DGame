@@ -182,6 +182,7 @@ bool Initialize() {
     deviceFeatures.features.tessellationShader = true;
     deviceFeatures.features.multiDrawIndirect  = true;
     deviceFeatures.features.drawIndirectFirstInstance = true;
+    deviceFeatures.features.samplerAnisotropy  = true;
 
     VkPhysicalDeviceVulkan12Features vulkan12Features{};
     vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -1054,6 +1055,7 @@ Buffer createBuffer(VkBufferUsageFlags    usageFlags,
 Texture createTexture(uint32_t          width,
                       uint32_t          height,
                       VkFormat          format,
+                      uint32_t          mipLevels,
                       VkImageUsageFlags usageFlags) noexcept {
     Texture texture;
     texture.width  = width;
@@ -1072,7 +1074,7 @@ Texture createTexture(uint32_t          width,
     imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
     imageCreateInfo.format                = format;
     imageCreateInfo.extent                = extent;
-    imageCreateInfo.mipLevels             = 1;
+    imageCreateInfo.mipLevels             = mipLevels;
     imageCreateInfo.arrayLayers           = 1;
     imageCreateInfo.samples               = nbSamples;
     imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
@@ -1114,7 +1116,7 @@ Texture createTexture(uint32_t          width,
             ? VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT
             : VK_IMAGE_ASPECT_COLOR_BIT;
     ivCreateInfo.subresourceRange.baseMipLevel   = 0;
-    ivCreateInfo.subresourceRange.levelCount     = 1;
+    ivCreateInfo.subresourceRange.levelCount     = mipLevels;
     ivCreateInfo.subresourceRange.baseArrayLayer = 0;
     ivCreateInfo.subresourceRange.layerCount     = 1;
     vkCreateImageView(sDevice, &ivCreateInfo, nullptr, &texture.view);
@@ -1123,25 +1125,30 @@ Texture createTexture(uint32_t          width,
     // "Texture2D"); setDebugObjectName(mDevice, (uint64_t)vulkanTexture->view,
     // VK_OBJECT_TYPE_IMAGE_VIEW, "Texture2DView");
 
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(sPhysicalDevice, &properties);
+
     VkSamplerCreateInfo samplerCreateInfo{};
     samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerCreateInfo.pNext;
     samplerCreateInfo.flags;
-    samplerCreateInfo.magFilter;
-    samplerCreateInfo.minFilter;
-    samplerCreateInfo.mipmapMode;
-    samplerCreateInfo.addressModeU;
-    samplerCreateInfo.addressModeV;
-    samplerCreateInfo.addressModeW;
-    samplerCreateInfo.mipLodBias;
-    samplerCreateInfo.anisotropyEnable;
-    samplerCreateInfo.maxAnisotropy;
-    samplerCreateInfo.compareEnable;
-    samplerCreateInfo.compareOp;
-    samplerCreateInfo.minLod;
-    samplerCreateInfo.maxLod;
-    samplerCreateInfo.borderColor;
-    samplerCreateInfo.unnormalizedCoordinates;
+    // Magnification concerns the oversampling
+    samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+    // minification concerns undersampling
+    samplerCreateInfo.minFilter               = VK_FILTER_LINEAR;
+    samplerCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.mipLodBias              = 0.0f;
+    samplerCreateInfo.anisotropyEnable        = VK_TRUE;
+    samplerCreateInfo.maxAnisotropy           = properties.limits.maxSamplerAnisotropy;
+    samplerCreateInfo.compareEnable           = VK_FALSE;
+    samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+    samplerCreateInfo.minLod                  = 0;
+    samplerCreateInfo.maxLod                  = mipLevels;
+    samplerCreateInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
     VK_CHECK(vkCreateSampler(sDevice, &samplerCreateInfo, nullptr, &texture.sampler));
 
     return texture;

@@ -79,6 +79,7 @@ void                          copyBufferToImage(
 [[nodiscard]] Texture createTexture(uint32_t          width,
                                     uint32_t          height,
                                     VkFormat          format,
+                                    uint32_t          mipLevels,
                                     VkImageUsageFlags usageFlags) noexcept;
 
 } // namespace VulkanContext

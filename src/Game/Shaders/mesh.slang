@@ -109,7 +109,7 @@ PSOutput ps_main(const VSOutput input) {
     float3 viewDir = normalize(perFrame.viewPosition - input.outPosition);
     float4 result = CalcPointLight(light, normalWorldSpace, input.outPosition, viewDir, input.outTex);
     PSOutput output;
-    output.color = result;
+    output.color =  /*diffuseMap.Sample(input.outTex) +*/ result;
     //float gamma = 2.2;
     //output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
     return output;
