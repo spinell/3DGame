@@ -473,8 +473,26 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         return e;
     };
     light1 = createPointLight({10, 8, -6});
-    //light2 = createPointLight({10, 8,  0});
-    //light3 = createPointLight({10, 8,  6});
+    light2 = createPointLight({10, 8,  0});
+    light3 = createPointLight({10, 8,  6});
+
+    auto createDirectionalLight = [this, &meshSphere](const glm::vec3& direction) -> entt::entity{
+        auto e                                    = mRegistry.create();
+        auto& light                               = mRegistry.emplace<CDirectionalLight>(e);
+        light.color                               = {0.5, 0.5, 0.5};
+        light.direction                           = direction;
+        mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
+        auto& mat                                 = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
+        mat.diffuseMap                            = textures["ab_crate_a"];
+        mat.specularMap                           = textures["ab_crate_a_nm"];
+        mat.normalMap                             = textures["ab_crate_a_sm"];
+        return e;
+    };
+    createDirectionalLight({1.0, -1.0, 0.0});
+
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),

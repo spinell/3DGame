@@ -1,4 +1,7 @@
-
+struct DirectionalLight {
+    float4 color;
+    float4 direction;
+};
 struct PointLight {
     float4 position;
     float4 ambient;
@@ -8,6 +11,45 @@ struct PointLight {
     float linear;
     float quadratic;
 };
+
+float3 CalcDirectionalLight(DirectionalLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
+    // Negate the light direction.
+    // The light direction should be the direction from the light to the object/vertex/fragment.
+    // Lighting calculation expect the light direction to be from the object to the light.
+    const float3 lightDir = -normalize(light.direction.xyz);
+
+    // diffuse contribution
+    // If the angle between both vectors is greater than 90 degrees then the
+    // result of the dot product will actually become negative and we end up
+    // with a negative diffuse component.
+    // Note: diffuseFactor will be in range [0,1]
+    const float diffuseFactor = max(dot(normal, lightDir), 0.0);
+
+    float3 diffuse  = float3(0.0, 0.0, 0.0);
+    float3 specular = float3(0.0, 0.0, 0.0);
+
+    // diffuse and specular light contribution are added only
+    // if the light hit directly the surface (diffuseFactor > 0.0).
+    if(diffuseFactor > 0.0) {
+        diffuse = light.color.rgb * diffuseFactor * diffuseColor;
+
+        // view direction, from fragment to camera
+        const float3 viewDir = normalize(viewPosition - pos);
+
+        // specular contribution
+        float specularFactor = 0.0f;
+        if(blinnPhong) {
+            const float3 halfwayDir = normalize(lightDir + viewDir);
+            specularFactor = pow(max(dot(normal, halfwayDir), 0.0), push.shininess);
+        }else{
+            const float3 reflectDir = reflect(-lightDir, normal);
+            specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+        }
+        specular = light.color.rgb * specularFactor * specularColor;
+    }
+
+    return float3(diffuse + specular);
+}
 
 // @brief Compute the light contribution of a point light.
 // @param light         The light use to compute lighting.
@@ -84,7 +126,9 @@ struct PushData {
 
 struct LightData {
     uint       nbLight;
-    PointLight lights[512];
+    uint       nbDirectionalLight;
+    PointLight       lights[512];
+    DirectionalLight directionalLight[4];
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
@@ -142,6 +186,12 @@ PSOutput ps_main(const VSOutput input) {
     const float4 diffuseColor  = diffuseMap.Sample(input.outTex);
     const float4 specularColor = specularMap.Sample(input.outTex);
     float4 result = float4 (0,0,0,0);
+    for(uint i = 0; i < lightData.nbDirectionalLight; i++) {
+        const float3 ambient            = lightData.directionalLight[i].color.rgb * diffuseColor.rgb * 0.2;
+        const float3 diffuseAndSpecular = CalcDirectionalLight(lightData.directionalLight[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+        result += float4(ambient, 1.0);
+        result += float4(diffuseAndSpecular, 1.0);
+    }
     for(uint i = 0; i < lightData.nbLight; i++) {
         result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
     }

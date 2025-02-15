@@ -30,13 +30,17 @@ struct PointLight {
     float pad;
 };
 static_assert(sizeof(PointLight) == sizeof(float) * 20);
-
+struct DirectionalLight {
+    glm::vec4 color;
+    glm::vec4 direction;
+};
 struct LightData {
     uint32_t nbLight;
-    uint32_t _pad0;
+    uint32_t nbDirectionalLight;
     uint32_t _pad1;
     uint32_t _pad2;
     PointLight lights[512];
+    DirectionalLight directionalLight[4];
 };
 
 
@@ -133,6 +137,16 @@ void SceneRenderer::render(entt::registry*  registry,
             lightData.nbLight++;
         }
 
+        lightData.nbDirectionalLight = 0;
+        for (auto [entity, directionalLight] : mRegistry->view<CDirectionalLight>().each()) {
+            if(!directionalLight.enable) {
+                continue;
+            }
+            DirectionalLight& light = lightData.directionalLight[lightData.nbDirectionalLight];
+            light.color     = glm::vec4(directionalLight.color, 1.0f);
+            light.direction = glm::vec4(directionalLight.direction, 1.0f);
+            lightData.nbDirectionalLight++;
+        }
         void* pData{};
         vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
         std::memcpy(pData, &lightData, sizeof(lightData));

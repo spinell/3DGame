@@ -28,7 +28,11 @@ struct CMaterial {
     VkDescriptorSet descriptorSet0;
     VkDescriptorSet descriptorSet1;
 };
-
+struct CDirectionalLight {
+    bool      enable = true;
+    glm::vec3 color;
+    glm::vec3 direction;
+};
 struct CPointLight {
     glm::vec3 ambient;
     glm::vec3 diffuse;
