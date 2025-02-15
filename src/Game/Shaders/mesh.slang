@@ -11,6 +11,13 @@ struct PointLight {
     float linear;
     float quadratic;
 };
+struct SpotLight {
+    float4 color;
+    float4 position;
+    float4 direction;
+    float  cutOffInner;
+    float  cutOffOuter;
+};
 
 float3 CalcDirectionalLight(DirectionalLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
     // Negate the light direction.
@@ -105,6 +112,50 @@ float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColo
     return float4(ambient + diffuse + specular, 1.0f);
 }
 
+// TODO: add attenuation
+float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
+
+    // light direction, from fragment to light
+    const float3 lightDir = normalize(light.position.xyz - pos);
+    const float theta     = dot(lightDir, normalize(-light.direction.xyz));
+    if(theta > light.cutOffOuter) {
+        const float diffuseFactor = max(dot(normal, lightDir), 0.0);
+        float3 diffuse  = float3(0,0,0);
+        float3 specular = float3(0,0,0);
+
+        // diffuse and specular light contribution are added only
+        // if the light hit directly the surface (diffuseFactor > 0.0).
+        if(diffuseFactor > 0.0) {
+
+            diffuse = light.color.rgb * diffuseFactor * diffuseColor;
+
+            // view direction, from fragment to camera
+            const float3 viewDir = normalize(viewPosition - pos);
+
+            // specular contribution
+            float specularFactor = 0.0f;
+            if(blinnPhong) {
+                const float3 halfwayDir = normalize(lightDir + viewDir);
+                specularFactor = pow(max(dot(normal, halfwayDir), 0.0), push.shininess);
+            }else{
+                const float3 reflectDir = reflect(-lightDir, normal);
+                specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+            }
+            specular = light.color.rgb * specularFactor * specularColor;
+
+            // smooth ligh between inner and outer cutoff
+            const float epsilon   = light.cutOffInner - light.cutOffOuter;
+            const float intensity = clamp((theta - light.cutOffOuter) / epsilon, 0.0, 1.0);
+            diffuse *= intensity;
+            specular *= intensity;
+        }
+
+        return diffuse + specular;
+    }
+    return float3(0,0,0);
+}
+
+
 struct PerFrameData
 {
     float4x4 projection;
@@ -127,8 +178,10 @@ struct PushData {
 struct LightData {
     uint       nbLight;
     uint       nbDirectionalLight;
+    uint       nbSpotLight;
     PointLight       lights[512];
-    DirectionalLight directionalLight[4];
+    DirectionalLight directionalLights[4];
+    SpotLight        spotLights[4];
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
@@ -187,13 +240,17 @@ PSOutput ps_main(const VSOutput input) {
     const float4 specularColor = specularMap.Sample(input.outTex);
     float4 result = float4 (0,0,0,0);
     for(uint i = 0; i < lightData.nbDirectionalLight; i++) {
-        const float3 ambient            = lightData.directionalLight[i].color.rgb * diffuseColor.rgb * 0.2;
-        const float3 diffuseAndSpecular = CalcDirectionalLight(lightData.directionalLight[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+        const float3 ambient            = lightData.directionalLights[i].color.rgb * diffuseColor.rgb * 0.2;
+        const float3 diffuseAndSpecular = CalcDirectionalLight(lightData.directionalLights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
         result += float4(ambient, 1.0);
         result += float4(diffuseAndSpecular, 1.0);
     }
     for(uint i = 0; i < lightData.nbLight; i++) {
         result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+    }
+    for(uint i = 0; i < lightData.nbSpotLight; i++) {
+        const float3 diffuseAndSpecular = CalcSpotLight(lightData.spotLights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+        result += float4(diffuseAndSpecular, 1.0);
     }
     PSOutput output;
     output.color = result;

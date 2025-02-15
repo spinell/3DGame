@@ -34,13 +34,23 @@ struct DirectionalLight {
     glm::vec4 color;
     glm::vec4 direction;
 };
+struct SpotLight {
+    glm::vec4 color;
+    glm::vec4 position;
+    glm::vec4 direction;
+    float     cutOffInner;
+    float     cutOffOuter;
+    float pad0;
+    float pad1;
+};
 struct LightData {
     uint32_t nbLight;
     uint32_t nbDirectionalLight;
-    uint32_t _pad1;
+    uint32_t nbSpotLight;
     uint32_t _pad2;
     PointLight lights[512];
     DirectionalLight directionalLight[4];
+    SpotLight        spotLights[4];
 };
 
 
@@ -147,6 +157,21 @@ void SceneRenderer::render(entt::registry*  registry,
             light.direction = glm::vec4(directionalLight.direction, 1.0f);
             lightData.nbDirectionalLight++;
         }
+
+        lightData.nbSpotLight = 0;
+        for (auto [entity, transform, spotLight] : mRegistry->view<CTransform, CSpotLight>().each()) {
+            if(!spotLight.enable) {
+                continue;
+            }
+            SpotLight& light = lightData.nbSpotLight[lightData.spotLights];
+            light.position  = glm::vec4(transform.position, 1.0f);
+            light.color     = glm::vec4(spotLight.color, 1.0f);
+            light.direction = glm::vec4(spotLight.direction, 1.0f);
+            light.cutOffInner = glm::cos(glm::radians(spotLight.cutOffAngle));
+            light.cutOffOuter = glm::cos(glm::radians(spotLight.cutOffAngle+2.5f));
+            lightData.nbSpotLight++;
+        }
+
         void* pData{};
         vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
         std::memcpy(pData, &lightData, sizeof(lightData));

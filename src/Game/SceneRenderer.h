@@ -42,6 +42,12 @@ struct CPointLight {
     float     quadratic;
     bool      enable = true;
 };
+struct CSpotLight {
+    bool      enable = true;
+    glm::vec3 color;
+    glm::vec3 direction;
+    float     cutOffAngle; // degrees
+};
 
 class SceneRenderer {
 public:
