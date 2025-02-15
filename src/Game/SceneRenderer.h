@@ -56,9 +56,13 @@ public:
                 const glm::mat4& view,
                 const glm::vec3& viewPosition);
 
+    void setUseBlinnPhong(bool useBlinnPhong) { mUseBlinnPhong = useBlinnPhong;}
+    bool isUseBlinnPhong(bool useBlinnPhong) const { return mUseBlinnPhong; }
+    void toggleUseBlinnPhong() { mUseBlinnPhong = !mUseBlinnPhong; }
+
 private:
     entt::registry* mRegistry{};
-
+    bool                 mUseBlinnPhong = true;
     Buffer               mPerFrameBuffer;
     Buffer               mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram>  mMeshShader;

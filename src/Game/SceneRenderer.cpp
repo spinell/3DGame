@@ -15,8 +15,9 @@ struct PerFrameData {
     glm::vec3 viewPosition;
     float _pad;
     glm::vec4 ambientLight;
+    bool useBlinnPhong;
 };
-static_assert(sizeof(PerFrameData) == sizeof(float) * 40);
+static_assert(sizeof(PerFrameData) == sizeof(float) * 41);
 
 struct PointLight {
     glm::vec4 position;
@@ -102,6 +103,7 @@ void SceneRenderer::render(entt::registry*  registry,
         perFrameData.view = view;
         perFrameData.viewPosition = viewPosition;
         perFrameData.ambientLight = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+        perFrameData.useBlinnPhong = mUseBlinnPhong;
 
         void* pData{};
         vmaMapMemory(VulkanContext::getVmaAllocator(), mPerFrameBuffer.allocation, &pData);

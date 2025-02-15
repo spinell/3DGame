@@ -264,17 +264,17 @@ void TestLayer1::onAttach() {
 
     // generate mipmap for normal and specular map ?
     textures["ab_crate_a"]        = createTextureFromFile("./data/ab_crate_a.png", false, true);
-    textures["ab_crate_a_nm"]     = createTextureFromFile("./data/ab_crate_a_nm.png", false, false);
-    textures["ab_crate_a_sm"]     = createTextureFromFile("./data/ab_crate_a_sm.png", false, false);
+    textures["ab_crate_a_nm"]     = createTextureFromFile("./data/ab_crate_a_nm.png", false, true);
+    textures["ab_crate_a_sm"]     = createTextureFromFile("./data/ab_crate_a_sm.png", false, true);
     textures["brick_wall2"]       = createTextureFromFile("./data/brick_wall2-diff-512.tga", false, true);
-    textures["brick_wall2_sm"]    = createTextureFromFile("./data/brick_wall2-spec-512.tga", false, false);
-    textures["brick_wall2_nm"]    = createTextureFromFile("./data/brick_wall2-nor-512.tga", false, false);
+    textures["brick_wall2_sm"]    = createTextureFromFile("./data/brick_wall2-spec-512.tga", false, true);
+    textures["brick_wall2_nm"]    = createTextureFromFile("./data/brick_wall2-nor-512.tga", false, true);
     textures["metal1"]            = createTextureFromFile("./data/metal1-dif-1024.tga", false, true);
-    textures["metal1_sm"]         = createTextureFromFile("./data/metal1-spec-1024.tga", false, false);
-    textures["metal1_nm"]         = createTextureFromFile("./data/metal1-nor-1024.tga", false, false);
+    textures["metal1_sm"]         = createTextureFromFile("./data/metal1-spec-1024.tga", false, true);
+    textures["metal1_nm"]         = createTextureFromFile("./data/metal1-nor-1024.tga", false, true);
     textures["FloorSandStone"]    = createTextureFromFile("./data/FloorDiffuse.png", false, true); // FloorAmbientOcclusion
-    textures["FloorSandStone_nm"] = createTextureFromFile("./data/FloorNormal.png", false, false);
-    textures["FloorSandStone_sm"] = createTextureFromFile("./data/FloorSpacular.png", false, false);
+    textures["FloorSandStone_nm"] = createTextureFromFile("./data/FloorNormal.png", false, true);
+    textures["FloorSandStone_sm"] = createTextureFromFile("./data/FloorSpacular.png", false, true);
 
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
     auto meshGrid      = Mesh::CreateGrid(1.0f, 1.0f, 2, 2);
@@ -299,6 +299,7 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.shininess                    = 32.0f;
         mat.diffuseMap                   = textures["metal1"];
         mat.normalMap                    = textures["metal1_nm"];
         mat.specularMap                  = textures["metal1_sm"];
@@ -472,8 +473,8 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         return e;
     };
     light1 = createPointLight({10, 8, -6});
-    light2 = createPointLight({10, 8,  0});
-    light3 = createPointLight({10, 8,  6});
+    //light2 = createPointLight({10, 8,  0});
+    //light3 = createPointLight({10, 8,  6});
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -787,6 +788,9 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
             if (e.getKey() == Engine::KeyCode::KeyPad3) {
                 auto& light = mRegistry.get<CPointLight>(light3);
                 light.enable = !light.enable;
+            }
+            if (e.getKey() == Engine::KeyCode::KeyPadMinus) {
+                mSceneRenderer->toggleUseBlinnPhong();
             }
         }
     });

@@ -20,7 +20,7 @@ struct PointLight {
 //
 // @Note \p pos, \p normal and \p viewPosition must be in the same space.
 //
-float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition) {
+float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
 
     // view direction, from fragment to camera
     const float3 viewDir = normalize(viewPosition - pos);
@@ -46,8 +46,14 @@ float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColo
     float3 diffuse = light.diffuse.rgb * diffuseFactor * push.diffuse.rgb * diffuseColor;
 
     // specular contribution
-    const float3 reflectDir = reflect(-lightDir, normal);
-    const float specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+    float specularFactor = 0.0f;
+    if(blinnPhong) {
+        const float3 halfwayDir = normalize(lightDir + viewDir);
+        specularFactor = pow(max(dot(normal, halfwayDir), 0.0), push.shininess);
+    }else{
+        const float3 reflectDir = reflect(-lightDir, normal);
+        specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+    }
     float3 specular = light.specular.rgb * specularFactor * specularColor;
 
     ambient *= attenuation;
@@ -63,6 +69,7 @@ struct PerFrameData
     float4x4 view;
     float3 viewPosition;
     float4 ambientLight;
+    bool useBlinnPhong;
 }
 
 struct PushData {
@@ -123,20 +130,20 @@ VSOutput vs_main(const VSInput input) {
 
 [Shader("pixel")]
 PSOutput ps_main(const VSOutput input) {
-    float3 normal    = normalize(input.outNormal);
-    float3 tangent   = normalize(input.outTangent);
-    float3 biTangent = normalize(cross(tangent, normal));
-    float3x3 TBN = float3x3(tangent, biTangent, normal);
+    const float3 normal    = normalize(input.outNormal);
+    const float3 tangent   = normalize(input.outTangent);
+    const float3 biTangent = normalize(cross(tangent, normal));
+    const float3x3 TBN = float3x3(tangent, biTangent, normal);
 
     float3 normalTangentSpace = normalMap.Sample(input.outTex).rgb;
     normalTangentSpace = normalize(normalTangentSpace * 2 - 1);
-    float3 normalWorldSpace = normalize(mul(normalTangentSpace, TBN));
+    const float3 normalWorldSpace = normalize(mul(normalTangentSpace, TBN));
 
-    float4 diffuseColor  = diffuseMap.Sample(input.outTex);
-    float4 specularColor = specularMap.Sample(input.outTex);
+    const float4 diffuseColor  = diffuseMap.Sample(input.outTex);
+    const float4 specularColor = specularMap.Sample(input.outTex);
     float4 result = float4 (0,0,0,0);
     for(uint i = 0; i < lightData.nbLight; i++) {
-        result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition);
+        result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
     }
     PSOutput output;
     output.color = result;
