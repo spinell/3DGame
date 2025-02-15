@@ -36,6 +36,7 @@ struct CPointLight {
     float     constant;
     float     linear;
     float     quadratic;
+    bool      enable = true;
 };
 
 class SceneRenderer {

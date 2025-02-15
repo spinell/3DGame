@@ -18,7 +18,7 @@ struct PerFrameData {
 };
 static_assert(sizeof(PerFrameData) == sizeof(float) * 40);
 
-struct LightData {
+struct PointLight {
     glm::vec4 position;
     glm::vec4 ambient;
     glm::vec4 diffuse;
@@ -26,8 +26,18 @@ struct LightData {
     float constant;
     float linear;
     float quadratic;
+    float pad;
 };
-static_assert(sizeof(LightData) == sizeof(float) * 19);
+static_assert(sizeof(PointLight) == sizeof(float) * 20);
+
+struct LightData {
+    uint32_t nbLight;
+    uint32_t _pad0;
+    uint32_t _pad1;
+    uint32_t _pad2;
+    PointLight lights[512];
+};
+
 
 struct PushData {
     glm::mat4 transform;
@@ -99,22 +109,32 @@ void SceneRenderer::render(entt::registry*  registry,
         vmaUnmapMemory(VulkanContext::getVmaAllocator(), mPerFrameBuffer.allocation);
     }
 
+    //
+    // Point Light
+    //
     {
-        auto view           = mRegistry->view<CTransform, CPointLight>();
+        auto view = mRegistry->view<CTransform, CPointLight>();
+        LightData lightData{};
+        lightData.nbLight = 0;
         for (auto [entity, ctrans, pointLight] : view.each()) {
-            LightData lightData{};
-            lightData.position = glm::vec4(ctrans.position, 1.0f);
-            lightData.ambient   = glm::vec4(pointLight.ambient, 1.0f);
-            lightData.diffuse   = glm::vec4(pointLight.diffuse, 1.0f);
-            lightData.specular  = glm::vec4(pointLight.specular, 1.0f);
-            lightData.constant  = pointLight.constant;
-            lightData.linear    = pointLight.linear;
-            lightData.quadratic = pointLight.quadratic;
-            void* pData{};
-            vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
-            std::memcpy(pData, &lightData, sizeof(lightData));
-            vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
+            if(!pointLight.enable) {
+                continue;
+            }
+            PointLight& light = lightData.lights[lightData.nbLight];
+            light.position = glm::vec4(ctrans.position, 1.0f);
+            light.ambient   = glm::vec4(pointLight.ambient, 1.0f);
+            light.diffuse   = glm::vec4(pointLight.diffuse, 1.0f);
+            light.specular  = glm::vec4(pointLight.specular, 1.0f);
+            light.constant  = pointLight.constant;
+            light.linear    = pointLight.linear;
+            light.quadratic = pointLight.quadratic;
+            lightData.nbLight++;
         }
+
+        void* pData{};
+        vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
+        std::memcpy(pData, &lightData, sizeof(lightData));
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
     }
 
     // render scene

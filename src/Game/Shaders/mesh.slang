@@ -1,11 +1,4 @@
 
-struct PerFrameData
-{
-    float4x4 projection;
-    float4x4 view;
-    float3 viewPosition;
-    float4 ambientLight;
-}
 struct PointLight {
     float4 position;
     float4 ambient;
@@ -15,6 +8,63 @@ struct PointLight {
     float linear;
     float quadratic;
 };
+
+// @brief Compute the light contribution of a point light.
+// @param light         The light use to compute lighting.
+// @param diffuseColor  The diffuse color of the surface.
+// @param specularColor The specular color of the surface.
+// @param pos           The position of the vertex/fragment.
+// @param normal        The normal vector of the surface/fragment.
+// @param viewPosition  The view position (Camera direction)
+// @return The light color contribution.
+//
+// @Note \p pos, \p normal and \p viewPosition must be in the same space.
+//
+float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition) {
+
+    // view direction, from fragment to camera
+    const float3 viewDir = normalize(viewPosition - pos);
+
+    // light direction, from fragment to light
+    const float3 lightDir = normalize(light.position.xyz - pos);
+
+    // distance between light and vertex/fragment
+    const float distance = length(light.position - float4(pos, 1.0f));
+
+    const float attenuation = 1.0 / (light.constant +
+                                     light.linear * distance +
+                                     light.quadratic * (distance * distance));
+
+    // ambient contribution
+    float3 ambient = light.ambient.rgb * push.ambient.rgb * diffuseColor;
+
+    // diffuse contribution
+    // If the angle between both vectors is greater than 90 degrees then the
+    // result of the dot product will actually become negative and we end up
+    // with a negative diffuse component.
+    const float diffuseFactor = max(dot(normal, lightDir), 0.0);
+    float3 diffuse = light.diffuse.rgb * diffuseFactor * push.diffuse.rgb * diffuseColor;
+
+    // specular contribution
+    const float3 reflectDir = reflect(-lightDir, normal);
+    const float specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+    float3 specular = light.specular.rgb * specularFactor * specularColor;
+
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    return float4(ambient + diffuse + specular, 1.0f);
+}
+
+struct PerFrameData
+{
+    float4x4 projection;
+    float4x4 view;
+    float3 viewPosition;
+    float4 ambientLight;
+}
+
 struct PushData {
     float4x4 model;
     float4x4 normalMatrix;
@@ -25,8 +75,13 @@ struct PushData {
     float shininess;
 };
 
+struct LightData {
+    uint       nbLight;
+    PointLight lights[512];
+};
+
 [[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
-[[vk::binding(1, 0)]] ConstantBuffer<PointLight> light;
+[[vk::binding(1, 0)]] ConstantBuffer<LightData>   lightData;
 [[vk::binding(2, 1)]] Sampler2D diffuseMap;
 [[vk::binding(3, 1)]] Sampler2D specularMap;
 [[vk::binding(4, 1)]] Sampler2D normalMap;
@@ -66,36 +121,6 @@ VSOutput vs_main(const VSInput input) {
     return output;
 }
 
-float4 CalcPointLight(PointLight light, float3 normal, float3 pos, float3 viewDir, float2 outTex) {
-    // light position, from fragment to light
-    float3 lightDir = normalize(light.position.xyz - pos);
-
-    float distance = length(light.position - float4(pos, 1.0f));
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-
-    // ambient
-    float3 ambient = light.ambient.rgb * push.ambient.rgb * diffuseMap.Sample(outTex).rgb;
-
-    // diffuse
-    // If the angle between both vectors is greater than 90 degrees then the
-    // result of the dot product will actually become negative and we end up
-    // with a negative diffuse component.
-    float diffuseFactor = max(dot(normal, lightDir), 0.0);
-    float3 diffuse = light.diffuse.rgb * (diffuseFactor * push.diffuse.rgb * diffuseMap.Sample(outTex).rgb);
-
-    // specular
-    float3 reflectDir = reflect(-lightDir, normal);
-    float specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
-    float3 specular = light.specular.rgb * specularFactor * specularMap.Sample(outTex).rgb;
-
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-    float4 color = float4(ambient + diffuse + specular, 1.0f);
-
-    return color;
-}
-
 [Shader("pixel")]
 PSOutput ps_main(const VSOutput input) {
     float3 normal    = normalize(input.outNormal);
@@ -106,10 +131,16 @@ PSOutput ps_main(const VSOutput input) {
     float3 normalTangentSpace = normalMap.Sample(input.outTex).rgb;
     normalTangentSpace = normalize(normalTangentSpace * 2 - 1);
     float3 normalWorldSpace = normalize(mul(normalTangentSpace, TBN));
-    float3 viewDir = normalize(perFrame.viewPosition - input.outPosition);
-    float4 result = CalcPointLight(light, normalWorldSpace, input.outPosition, viewDir, input.outTex);
+
+    float4 diffuseColor  = diffuseMap.Sample(input.outTex);
+    float4 specularColor = specularMap.Sample(input.outTex);
+    float4 result = float4 (0,0,0,0);
+    for(uint i = 0; i < lightData.nbLight; i++) {
+        result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition);
+    }
     PSOutput output;
-    output.color =  /*diffuseMap.Sample(input.outTex) +*/ result;
+    output.color = result;
+
     //float gamma = 2.2;
     //output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
     return output;

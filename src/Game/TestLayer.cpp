@@ -249,6 +249,9 @@ Texture depthBuffer;
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
 std::map<std::string,Texture> textures;
+entt::entity light1;
+entt::entity light2;
+entt::entity light3;
 
 TestLayer1::~TestLayer1() {}
 
@@ -448,9 +451,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     createCynlinderAndSphere({3.0f, 1.0f, -7.0f});
 
     // lights
-    {
+    auto createPointLight = [this, &meshSphere](const glm::vec3& position) -> entt::entity{
         auto e                                    = mRegistry.create();
-        mRegistry.emplace<CTransform>(e).position = {10, 8, 0};
+        mRegistry.emplace<CTransform>(e).position = position;
         auto& light                               = mRegistry.emplace<CPointLight>(e);
         light.ambient                             = {0.2, 0.2, 0.2};
         light.diffuse                             = {1.0, 1.0, 1.0};
@@ -466,7 +469,11 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.diffuseMap                            = textures["ab_crate_a"];
         mat.specularMap                           = textures["ab_crate_a_nm"];
         mat.normalMap                             = textures["ab_crate_a_sm"];
-    }
+        return e;
+    };
+    light1 = createPointLight({10, 8, -6});
+    light2 = createPointLight({10, 8,  0});
+    light3 = createPointLight({10, 8,  6});
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -752,7 +759,7 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
             vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
             VK_FORMAT_D24_UNORM_S8_UINT, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     });
-    event.dispatch<Engine::KeyEvent>([](const Engine::KeyEvent& e) {
+    event.dispatch<Engine::KeyEvent>([this](const Engine::KeyEvent& e) {
         if (e.isPressed()) {
             if (e.getKey() == Engine::KeyCode::Escape) {
                 Engine::Application::Get().close();
@@ -766,8 +773,20 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
             if (e.getKey() == Engine::KeyCode::KeyPad0) {
                 Engine::Application::Get().GetWindow().toogleMouseGrab();
             }
-            if (e.getKey() == Engine::KeyCode::KeyPad1) {
+            if (e.getKey() == Engine::KeyCode::KeyPadEnter) {
                 Engine::Application::Get().GetWindow().toogleMouseRelativeMode();
+            }
+            if (e.getKey() == Engine::KeyCode::KeyPad1) {
+                auto& light = mRegistry.get<CPointLight>(light1);
+                light.enable = !light.enable;
+            }
+            if (e.getKey() == Engine::KeyCode::KeyPad2) {
+                auto& light = mRegistry.get<CPointLight>(light2);
+                light.enable = !light.enable;
+            }
+            if (e.getKey() == Engine::KeyCode::KeyPad3) {
+                auto& light = mRegistry.get<CPointLight>(light3);
+                light.enable = !light.enable;
             }
         }
     });
