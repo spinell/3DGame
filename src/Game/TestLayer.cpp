@@ -252,6 +252,7 @@ std::map<std::string,Texture> textures;
 entt::entity light1;
 entt::entity light2;
 entt::entity light3;
+entt::entity flashLight;
 
 TestLayer1::~TestLayer1() {}
 
@@ -510,8 +511,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.normalMap                             = textures["ab_crate_a_sm"];
         return e;
     };
-    createSpotLight({0, 10, 0}, {1, -1, 0});
-    createSpotLight({10, 10, 0}, {-1, -1, 0});
+    flashLight = createSpotLight({0, 10, 0}, {1, -1, 0});
 
     auto sdlWindow   = Engine::Application::Get().GetWindow().getSDLWindow();
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
@@ -603,6 +603,10 @@ void TestLayer1::onDetach() {
 
 void TestLayer1::onUpdate(float timeStep) {
     cameraController.onUpdate(timeStep);
+    auto& lightTrans = mRegistry.get<CTransform>(flashLight);
+    auto& light = mRegistry.get<CSpotLight>(flashLight);
+    lightTrans.position = cameraController.getPosition();
+    light.direction     = cameraController.getDirection();
 
     // start command buffer
     {
@@ -828,6 +832,10 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
             }
             if (e.getKey() == Engine::KeyCode::KeyPadMinus) {
                 mSceneRenderer->toggleUseBlinnPhong();
+            }
+            if (e.getKey() == Engine::KeyCode::F) {
+                auto& light = mRegistry.get<CSpotLight>(flashLight);
+                light.enable = !light.enable;
             }
         }
     });

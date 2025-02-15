@@ -23,6 +23,7 @@ public:
     [[nodiscard]] const glm::mat4& getProjectonMatrix() const { return mProjMatrix; }
     [[nodiscard]] const glm::mat4& getViewMatrix() const { return mViewMatrix; }
     [[nodiscard]] const glm::vec3& getPosition() const { return mPosition; }
+    [[nodiscard]] const glm::vec3& getDirection() const { return mForwardDirection; }
     void setPosition(const glm::vec3& pos) { mPosition = pos; }
 
 private:
