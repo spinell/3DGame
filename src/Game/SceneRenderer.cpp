@@ -38,10 +38,10 @@ struct SpotLight {
     glm::vec4 color;
     glm::vec4 position;
     glm::vec4 direction;
+    float     range;
     float     cutOffInner;
     float     cutOffOuter;
-    float pad0;
-    float pad1;
+    float     pad1;
 };
 struct LightData {
     uint32_t nbLight;
@@ -167,6 +167,7 @@ void SceneRenderer::render(entt::registry*  registry,
             light.position  = glm::vec4(transform.position, 1.0f);
             light.color     = glm::vec4(spotLight.color, 1.0f);
             light.direction = glm::vec4(spotLight.direction, 1.0f);
+            light.range     = spotLight.range;
             light.cutOffInner = glm::cos(glm::radians(spotLight.cutOffAngle));
             light.cutOffOuter = glm::cos(glm::radians(spotLight.cutOffAngle+2.5f));
             lightData.nbSpotLight++;

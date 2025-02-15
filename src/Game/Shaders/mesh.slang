@@ -15,6 +15,7 @@ struct SpotLight {
     float4 color;
     float4 position;
     float4 direction;
+    float  range;
     float  cutOffInner;
     float  cutOffOuter;
 };
@@ -115,13 +116,22 @@ float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColo
 // TODO: add attenuation
 float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
 
+    // distance between light and vertex/fragment
+    const float distanceLightToSurface = length(light.position - float4(pos, 1.0f));
+
+    if(distanceLightToSurface > light.range) {
+        return float3(0,0,0);
+    }
+
+    // light diffuse and specular contribution
+    float3 diffuse  = float3(0,0,0);
+    float3 specular = float3(0,0,0);
+
     // light direction, from fragment to light
     const float3 lightDir = normalize(light.position.xyz - pos);
     const float theta     = dot(lightDir, normalize(-light.direction.xyz));
     if(theta > light.cutOffOuter) {
         const float diffuseFactor = max(dot(normal, lightDir), 0.0);
-        float3 diffuse  = float3(0,0,0);
-        float3 specular = float3(0,0,0);
 
         // diffuse and specular light contribution are added only
         // if the light hit directly the surface (diffuseFactor > 0.0).
@@ -149,10 +159,8 @@ float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor,
             diffuse *= intensity;
             specular *= intensity;
         }
-
-        return diffuse + specular;
     }
-    return float3(0,0,0);
+    return diffuse + specular;
 }
 
 

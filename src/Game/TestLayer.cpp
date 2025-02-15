@@ -501,6 +501,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         light.color                               = {0.5, 0.5, 0.5};
         light.direction                           = direction;
         light.cutOffAngle                         = 15.f;
+        light.range                               = 10.0f;
         mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
