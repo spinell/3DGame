@@ -7,9 +7,11 @@ struct PointLight {
     float4 ambient;
     float4 diffuse;
     float4 specular;
-    float constant;
-    float linear;
-    float quadratic;
+    float  range;
+    float  intensity; // not used, to remove ?
+    float  constant;  // not used, to remove ?
+    float  linear;    // not used, to remove ?
+    float  quadratic; // not used, to remove ?
 };
 struct SpotLight {
     float4 color;
@@ -55,7 +57,6 @@ float3 CalcDirectionalLight(DirectionalLight light, float3 diffuseColor, float3 
         }
         specular = light.color.rgb * specularFactor * specularColor;
     }
-
     return float3(diffuse + specular);
 }
 
@@ -70,47 +71,51 @@ float3 CalcDirectionalLight(DirectionalLight light, float3 diffuseColor, float3 
 //
 // @Note \p pos, \p normal and \p viewPosition must be in the same space.
 //
-float4 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
+float3 CalcPointLight(PointLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
 
-    // view direction, from fragment to camera
-    const float3 viewDir = normalize(viewPosition - pos);
+    // distance between light and vertex/fragment
+    const float distance = length(light.position.xyz - pos);
+
+    if(distance > light.range) {
+        // vertex/fragment out of light range.
+        // no light contribution.
+        return float3(0,0,0);
+    }
 
     // light direction, from fragment to light
     const float3 lightDir = normalize(light.position.xyz - pos);
-
-    // distance between light and vertex/fragment
-    const float distance = length(light.position - float4(pos, 1.0f));
-
-    const float attenuation = 1.0 / (light.constant +
-                                     light.linear * distance +
-                                     light.quadratic * (distance * distance));
-
-    // ambient contribution
-    float3 ambient = light.ambient.rgb * push.ambient.rgb * diffuseColor;
 
     // diffuse contribution
     // If the angle between both vectors is greater than 90 degrees then the
     // result of the dot product will actually become negative and we end up
     // with a negative diffuse component.
     const float diffuseFactor = max(dot(normal, lightDir), 0.0);
-    float3 diffuse = light.diffuse.rgb * diffuseFactor * push.diffuse.rgb * diffuseColor;
+    if(diffuseFactor > 0) {
 
-    // specular contribution
-    float specularFactor = 0.0f;
-    if(blinnPhong) {
-        const float3 halfwayDir = normalize(lightDir + viewDir);
-        specularFactor = pow(max(dot(normal, halfwayDir), 0.0), push.shininess);
-    }else{
-        const float3 reflectDir = reflect(-lightDir, normal);
-        specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+        float attenuation = clamp(1 - (distance * distance) / (light.range * light.range), 0, 1);
+        attenuation *= lerp(attenuation, 1.0, 0.5);
+
+        float3 diffuse = light.diffuse.rgb * diffuseFactor * push.diffuse.rgb * diffuseColor;
+
+        // view direction, from fragment to camera
+        const float3 viewDir = normalize(viewPosition - pos);
+
+        // specular contribution
+        float specularFactor = 0.0f;
+        if(blinnPhong) {
+            const float3 halfwayDir = normalize(lightDir + viewDir);
+            specularFactor = pow(max(dot(normal, halfwayDir), 0.0), push.shininess);
+        }else{
+            const float3 reflectDir = reflect(-lightDir, normal);
+            specularFactor = pow(max(dot(viewDir, reflectDir), 0.0), push.shininess);
+        }
+        float3 specular = light.specular.rgb * specularFactor * specularColor;
+
+        diffuse *= attenuation;
+        specular *= attenuation;
+        return float3(diffuse + specular);
     }
-    float3 specular = light.specular.rgb * specularFactor * specularColor;
-
-    ambient *= attenuation;
-    diffuse *= attenuation;
-    specular *= attenuation;
-
-    return float4(ambient + diffuse + specular, 1.0f);
+    return float3(0,0,0);
 }
 
 // TODO: add attenuation
@@ -136,6 +141,8 @@ float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor,
         // diffuse and specular light contribution are added only
         // if the light hit directly the surface (diffuseFactor > 0.0).
         if(diffuseFactor > 0.0) {
+            float attenuation = clamp(1 - (distanceLightToSurface * distanceLightToSurface) / (light.range * light.range), 0, 1);
+            attenuation *= lerp(attenuation, 1.0, 0.5);
 
             diffuse = light.color.rgb * diffuseFactor * diffuseColor;
 
@@ -158,6 +165,9 @@ float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor,
             const float intensity = clamp((theta - light.cutOffOuter) / epsilon, 0.0, 1.0);
             diffuse *= intensity;
             specular *= intensity;
+
+            diffuse *= attenuation;
+            specular *= attenuation;
         }
     }
     return diffuse + specular;
@@ -171,6 +181,8 @@ struct PerFrameData
     float3 viewPosition;
     float4 ambientLight;
     bool useBlinnPhong;
+    bool useGammeCorrection;
+    float gamma;
 }
 
 struct PushData {
@@ -246,24 +258,30 @@ PSOutput ps_main(const VSOutput input) {
 
     const float4 diffuseColor  = diffuseMap.Sample(input.outTex);
     const float4 specularColor = specularMap.Sample(input.outTex);
-    float4 result = float4 (0,0,0,0);
+    float4 result = perFrame.ambientLight * diffuseColor;
     for(uint i = 0; i < lightData.nbDirectionalLight; i++) {
-        const float3 ambient            = lightData.directionalLights[i].color.rgb * diffuseColor.rgb * 0.2;
         const float3 diffuseAndSpecular = CalcDirectionalLight(lightData.directionalLights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
-        result += float4(ambient, 1.0);
         result += float4(diffuseAndSpecular, 1.0);
     }
     for(uint i = 0; i < lightData.nbLight; i++) {
-        result += CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+        const float3 diffuseAndSpecular = CalcPointLight(lightData.lights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
+        result += float4(diffuseAndSpecular, 1.0);
     }
     for(uint i = 0; i < lightData.nbSpotLight; i++) {
         const float3 diffuseAndSpecular = CalcSpotLight(lightData.spotLights[i], diffuseColor.rgb, specularColor.rgb, input.outPosition, normalWorldSpace, perFrame.viewPosition, perFrame.useBlinnPhong);
         result += float4(diffuseAndSpecular, 1.0);
     }
+    //
+    // tone mapping
+    //
+    //float exposure = 5.0f;
+    //result.rgb = float3(1.0) - exp(-result.rgb * exposure);
+
+    if(perFrame.useGammeCorrection) {
+        result.rgb = pow(result.rgb, float3(1.0/perFrame.gamma));
+    }
+
     PSOutput output;
     output.color = result;
-
-    //float gamma = 2.2;
-    //output.color.rgb = pow(output.color.rgb, float3(1.0/gamma));
     return output;
 }

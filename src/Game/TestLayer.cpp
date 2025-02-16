@@ -264,16 +264,16 @@ void TestLayer1::onAttach() {
     cameraController.setPosition({-2, 2, 2});
 
     // generate mipmap for normal and specular map ?
-    textures["ab_crate_a"]        = createTextureFromFile("./data/ab_crate_a.png", false, true);
+    textures["ab_crate_a"]        = createTextureFromFile("./data/ab_crate_a.png", true, true);
     textures["ab_crate_a_nm"]     = createTextureFromFile("./data/ab_crate_a_nm.png", false, true);
     textures["ab_crate_a_sm"]     = createTextureFromFile("./data/ab_crate_a_sm.png", false, true);
-    textures["brick_wall2"]       = createTextureFromFile("./data/brick_wall2-diff-512.tga", false, true);
+    textures["brick_wall2"]       = createTextureFromFile("./data/brick_wall2-diff-512.tga", true, true);
     textures["brick_wall2_sm"]    = createTextureFromFile("./data/brick_wall2-spec-512.tga", false, true);
     textures["brick_wall2_nm"]    = createTextureFromFile("./data/brick_wall2-nor-512.tga", false, true);
-    textures["metal1"]            = createTextureFromFile("./data/metal1-dif-1024.tga", false, true);
+    textures["metal1"]            = createTextureFromFile("./data/metal1-dif-1024.tga", true, true);
     textures["metal1_sm"]         = createTextureFromFile("./data/metal1-spec-1024.tga", false, true);
     textures["metal1_nm"]         = createTextureFromFile("./data/metal1-nor-1024.tga", false, true);
-    textures["FloorSandStone"]    = createTextureFromFile("./data/FloorDiffuse.png", false, true); // FloorAmbientOcclusion
+    textures["FloorSandStone"]    = createTextureFromFile("./data/FloorDiffuse.png", true, true); // FloorAmbientOcclusion
     textures["FloorSandStone_nm"] = createTextureFromFile("./data/FloorNormal.png", false, true);
     textures["FloorSandStone_sm"] = createTextureFromFile("./data/FloorSpacular.png", false, true);
 
@@ -453,7 +453,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     createCynlinderAndSphere({3.0f, 1.0f, -7.0f});
 
     // lights
-    auto createPointLight = [this, &meshSphere](const glm::vec3& position) -> entt::entity{
+    auto createPointLight = [this, &meshSphere](const glm::vec3& position, float intensity, float range) -> entt::entity{
         auto e                                    = mRegistry.create();
         mRegistry.emplace<CTransform>(e).position = position;
         auto& light                               = mRegistry.emplace<CPointLight>(e);
@@ -463,6 +463,8 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         light.constant                            = 1.0f;
         light.linear                              = 0.09f;
         light.quadratic                           = 0.0032f;
+        light.intensity                           = intensity;
+        light.range                               = range;
         mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
@@ -473,9 +475,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.normalMap                             = textures["ab_crate_a_sm"];
         return e;
     };
-    light1 = createPointLight({10, 8, -6});
-    light2 = createPointLight({10, 8,  0});
-    light3 = createPointLight({10, 8,  6});
+    light1 = createPointLight({10, 8, -6}, 10, 10);
+    light2 = createPointLight({10, 4,  0}, 20, 5);
+    light3 = createPointLight({10, 8,  6}, 30, 10);
 
     auto createDirectionalLight = [this, &meshSphere](const glm::vec3& direction) -> entt::entity{
         auto e                                    = mRegistry.create();
@@ -492,7 +494,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.normalMap                             = textures["ab_crate_a_sm"];
         return e;
     };
-    //createDirectionalLight({1.0, -1.0, 0.0});
+    //createDirectionalLight({0.0, -1.0, 1.0});
 
     auto createSpotLight = [this, &meshSphere](const glm::vec3& position, const glm::vec3& direction) -> entt::entity{
         auto e                                    = mRegistry.create();
@@ -837,6 +839,9 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
             if (e.getKey() == Engine::KeyCode::F) {
                 auto& light = mRegistry.get<CSpotLight>(flashLight);
                 light.enable = !light.enable;
+            }
+            if (e.getKey() == Engine::KeyCode::G) {
+                mSceneRenderer->toggleGammaCorrection();
             }
         }
     });

@@ -15,21 +15,29 @@ struct PerFrameData {
     glm::vec3 viewPosition;
     float _pad;
     glm::vec4 ambientLight;
-    bool useBlinnPhong;
+    int useBlinnPhong;
+    int useGammaCorrection = true;
+    float gamma = 2.2f;
 };
-static_assert(sizeof(PerFrameData) == sizeof(float) * 41);
+static_assert(offsetof(PerFrameData,useBlinnPhong) == 160);
+static_assert(offsetof(PerFrameData,useGammaCorrection) == 164);
+//static_assert(sizeof(PerFrameData) == sizeof(float) * 42);
 
 struct PointLight {
     glm::vec4 position;
     glm::vec4 ambient;
     glm::vec4 diffuse;
     glm::vec4 specular;
+    float range;
+    float intensity;
     float constant;
     float linear;
     float quadratic;
-    float pad;
+    float pad0;
+    float pad1;
+    float pad2;
 };
-static_assert(sizeof(PointLight) == sizeof(float) * 20);
+//static_assert(sizeof(PointLight) == sizeof(float) * 22);
 struct DirectionalLight {
     glm::vec4 color;
     glm::vec4 direction;
@@ -116,8 +124,10 @@ void SceneRenderer::render(entt::registry*  registry,
         perFrameData.projection = proj;
         perFrameData.view = view;
         perFrameData.viewPosition = viewPosition;
-        perFrameData.ambientLight = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+        perFrameData.ambientLight = glm::vec4(0.01f, 0.01f, 0.01f, 1.0f);
         perFrameData.useBlinnPhong = mUseBlinnPhong;
+        perFrameData.useGammaCorrection = mUseGammaCorrection;
+        perFrameData.gamma = mGamma;
 
         void* pData{};
         vmaMapMemory(VulkanContext::getVmaAllocator(), mPerFrameBuffer.allocation, &pData);
@@ -144,6 +154,8 @@ void SceneRenderer::render(entt::registry*  registry,
             light.constant  = pointLight.constant;
             light.linear    = pointLight.linear;
             light.quadratic = pointLight.quadratic;
+            light.range     = pointLight.range;
+            light.intensity = pointLight.intensity;
             lightData.nbLight++;
         }
 
@@ -169,7 +181,7 @@ void SceneRenderer::render(entt::registry*  registry,
             light.direction = glm::vec4(spotLight.direction, 1.0f);
             light.range     = spotLight.range;
             light.cutOffInner = glm::cos(glm::radians(spotLight.cutOffAngle));
-            light.cutOffOuter = glm::cos(glm::radians(spotLight.cutOffAngle+2.5f));
+            light.cutOffOuter = glm::cos(glm::radians(spotLight.cutOffAngle+12.5f));
             lightData.nbSpotLight++;
         }
 

@@ -85,8 +85,8 @@ add_custom_command(
     OUTPUT
         ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_vert.spv
         ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_frag.spv
-    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_vert.spv -stage vertex -entry vs_main
-    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_frag.spv -stage pixel  -entry ps_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_vert.spv -stage vertex -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_frag.spv -stage pixel  -entry ps_main
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang
     VERBATIM
     USES_TERMINAL

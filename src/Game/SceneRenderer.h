@@ -37,6 +37,8 @@ struct CPointLight {
     glm::vec3 ambient;
     glm::vec3 diffuse;
     glm::vec3 specular;
+    float     range     = 10;
+    float     intensity = 10;
     float     constant;
     float     linear;
     float     quadratic;
@@ -68,12 +70,16 @@ public:
                 const glm::vec3& viewPosition);
 
     void setUseBlinnPhong(bool useBlinnPhong) { mUseBlinnPhong = useBlinnPhong;}
-    bool isUseBlinnPhong(bool useBlinnPhong) const { return mUseBlinnPhong; }
+    bool isUseBlinnPhong() const { return mUseBlinnPhong; }
     void toggleUseBlinnPhong() { mUseBlinnPhong = !mUseBlinnPhong; }
-
+    void setUseGammaCorrection(bool useGammaCorrection) { mUseGammaCorrection = useGammaCorrection;}
+    bool isUseGammaCorrection() const { return mUseGammaCorrection; }
+    void toggleGammaCorrection() { mUseGammaCorrection = !mUseGammaCorrection; }
 private:
     entt::registry* mRegistry{};
     bool                 mUseBlinnPhong = true;
+    bool                 mUseGammaCorrection = true;
+    float                mGamma = 2.2f;
     Buffer               mPerFrameBuffer;
     Buffer               mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram>  mMeshShader;
