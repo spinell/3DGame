@@ -13,14 +13,7 @@ struct Shader {
     VkPushConstantRange                       pushConstantRange{};
     std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> descriptorSetLayoutBinding;
 };
-struct GraphicPipeline {
-    VkPipeline                         pipeline{};
-    VkPipelineLayout                   pipelineLayout{};
-    std::vector<VkDescriptorSetLayout> descriptorSetLayout;
-    std::vector<VkPushConstantRange>   pushConstantRanges;
 
-    void destroy();
-};
 struct Buffer {
     VkBuffer      buffer{VK_NULL_HANDLE};
     VmaAllocation allocation{VK_NULL_HANDLE};
@@ -62,15 +55,7 @@ void                          copyBufferToImage(
                                                     uint32_t               rangeCount,
                                                     VkPushConstantRange*   ranges);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
-[[nodiscard]] GraphicPipeline  createGraphicPipeline(Shader vert,
-                                                     Shader frag,
-                                                     bool   enableDepthTest = false,
-                                                     bool   vertexLayout    = false,
-                                                     bool   cull = false);
-[[nodiscard]] GraphicPipeline  createGraphicPipeline(std::shared_ptr<VulkanShaderProgram> shader,
-                                                     bool   enableDepthTest = false,
-                                                     bool   vertexLayout    = false,
-                                                     bool   cull = false);
+
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
                                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept;

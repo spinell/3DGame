@@ -5,6 +5,7 @@
 #include "vulkan/VulkanContext.h"
 #include "vulkan/VulkanTexture.h"
 #include "vulkan/VulkanShaderProgram.h"
+#include "vulkan/VulkanGraphicPipeline.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -77,18 +78,18 @@ static_assert(sizeof(PushData) == sizeof(float) * 47);
 SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
 
-        mMeshShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_vert.spv", "./shaders/mesh_frag.spv"});
-        bool a = mMeshShader->hasShaderStage(VK_SHADER_STAGE_VERTEX_BIT);
-        bool b = mMeshShader->hasShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT);
-        bool c = mMeshShader->hasPushConstant();
+    mMeshShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_vert.spv", "./shaders/mesh_frag.spv"});
+    bool a = mMeshShader->hasShaderStage(VK_SHADER_STAGE_VERTEX_BIT);
+    bool b = mMeshShader->hasShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT);
+    bool c = mMeshShader->hasPushConstant();
 
 
     // Mesh pipeline
     {
         mPerFrameBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(PerFrameData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         mLightDataBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(LightData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        mMeshPipeline    = VulkanContext::createGraphicPipeline(mMeshShader, true, true, true);
-        mDescriptorSet   = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
+        mMeshPipeline    = VulkanGraphicPipeline::Create(mMeshShader, true, true, true);
+        mDescriptorSet   = mDescriptorPool.allocate(mMeshPipeline->getDescriptorSetLayouts()[0]);
 
         VkDescriptorBufferInfo bufferInfo[2];
         bufferInfo[0].buffer = mPerFrameBuffer.buffer;
@@ -119,9 +120,9 @@ SceneRenderer::SceneRenderer() {
         //                                  "VertMeshShader");
         //VulkanContext::setDebugObjectName((uint64_t)mFragMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
         //                                  "FragMeshShader");
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.pipeline, VK_OBJECT_TYPE_PIPELINE,
+        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline->getPipeline(), VK_OBJECT_TYPE_PIPELINE,
                                           "meshPipeline");
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.pipelineLayout,
+        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline->getPipelineLayout(),
                                           VK_OBJECT_TYPE_PIPELINE_LAYOUT, "meshpipelineLayout");
     }
 }
@@ -131,7 +132,7 @@ SceneRenderer::~SceneRenderer() {
 
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mPerFrameBuffer.buffer, mPerFrameBuffer.allocation);
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mLightDataBuffer.buffer, mLightDataBuffer.allocation);
-    mMeshPipeline.destroy();
+    mMeshPipeline.reset();
     mMeshShader.reset();
 }
 
@@ -218,10 +219,10 @@ void SceneRenderer::render(entt::registry*  registry,
     // render scene
     {
         vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mMeshPipeline.pipeline);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mMeshPipeline->getPipeline());
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            mMeshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
+            mMeshPipeline->getPipelineLayout(), 0 /*firstSet*/, 1 /*nbSet*/,
             &mDescriptorSet, 0, nullptr);
 
         PushData pushData{};
@@ -229,7 +230,7 @@ void SceneRenderer::render(entt::registry*  registry,
         for (auto [entity, ctrans, cmesh, cmat] : view.each()) {
 
             if(cmat.descriptorSet1 == VK_NULL_HANDLE) {
-                cmat.descriptorSet1 = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[1]);
+                cmat.descriptorSet1 = mDescriptorPool.allocate(mMeshPipeline->getDescriptorSetLayouts()[1]);
 
                 VkDescriptorImageInfo descriptorImageInfo;
                 descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
@@ -270,9 +271,9 @@ void SceneRenderer::render(entt::registry*  registry,
             pushData.texScale  = cmat.texScale;
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    mMeshPipeline.pipelineLayout, 1 /*firstSet*/, 1 /*nbSet*/,
+                                    mMeshPipeline->getPipelineLayout(), 1 /*firstSet*/, 1 /*nbSet*/,
                                     &cmat.descriptorSet1, 0, nullptr);
-            vkCmdPushConstants(cmd, mMeshPipeline.pipelineLayout,
+            vkCmdPushConstants(cmd, mMeshPipeline->getPipelineLayout(),
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                                sizeof(pushData), reinterpret_cast<void*>(&pushData));
 

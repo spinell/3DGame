@@ -13,6 +13,7 @@
 #include "vulkan/VulkanShaderProgram.h"
 #include "vulkan/VulkanImGuiRenderer.h"
 #include "vulkan/VulkanTexture.h"
+#include "vulkan/VulkanGraphicPipeline.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -35,7 +36,7 @@ struct FrameData {
 FrameData        frameData{};
 VulkanSwapchain* vulkanSwapchain{};
 std::shared_ptr<VulkanShaderProgram> fullScreenShader;
-GraphicPipeline  pipelineFullScreen;
+VulkanGraphicPipelinePtr  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture depthBuffer;
@@ -363,9 +364,8 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         vkAllocateCommandBuffers(VulkanContext::getDevice(), &allocInfo, &frameData.commandBuffer);
     }
 
-    fullScreenShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/fullscreen_vert.spv", "./shaders/fullscreen_frag.spv"});
-    pipelineFullScreen =
-        VulkanContext::createGraphicPipeline(fullScreenShader);
+    fullScreenShader   = VulkanShaderProgram::CreateFromSpirv({"./shaders/fullscreen_vert.spv", "./shaders/fullscreen_frag.spv"});
+    pipelineFullScreen = VulkanGraphicPipeline::Create(fullScreenShader);
 
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
@@ -399,7 +399,7 @@ void TestLayer1::onDetach() {
     vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
 
     fullScreenShader.reset();
-    pipelineFullScreen.destroy();
+    pipelineFullScreen.reset();
 
     delete vulkanSwapchain;
     Renderer::Shutdown();
@@ -516,7 +516,7 @@ void TestLayer1::onUpdate(float timeStep) {
         // draw back ground
         {
             vkCmdBindPipeline(frameData.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              pipelineFullScreen.pipeline);
+                              pipelineFullScreen->getPipeline());
             vkCmdDraw(frameData.commandBuffer, 3, 1, 0, 0);
         }
 

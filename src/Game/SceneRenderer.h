@@ -3,6 +3,7 @@
 
 #include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanTexture.h"
+#include "vulkan/VulkanGraphicPipeline.h"
 #include "vulkan/vulkan.h"
 
 #include <entt/entt.hpp>
@@ -95,7 +96,7 @@ private:
     Buffer                               mPerFrameBuffer;
     Buffer                               mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram> mMeshShader;
-    GraphicPipeline                      mMeshPipeline;
+    VulkanGraphicPipelinePtr             mMeshPipeline;
     VulkanDescriptorPool                 mDescriptorPool;
     VkDescriptorSet                      mDescriptorSet;
 };
