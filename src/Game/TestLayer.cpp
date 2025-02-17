@@ -11,6 +11,7 @@
 #include "vulkan/VulkanSwapchain.h"
 #include "vulkan/VulkanUtils.h"
 #include "vulkan/VulkanShaderProgram.h"
+#include "vulkan/VulkanImGuiRenderer.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -520,6 +521,8 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     auto win32Handle = SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
                                               SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
 
+    VulkanImGuiRenderer::Init(Engine::Application::Get().GetWindow());
+
     VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{
         .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
         .pNext     = nullptr,
@@ -576,6 +579,8 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
 
 void TestLayer1::onDetach() {
     vkDeviceWaitIdle(VulkanContext::getDevice());
+
+    VulkanImGuiRenderer::Shutdown();
 
     for (auto& m : meshs) {
         vmaDestroyBuffer(VulkanContext::getVmaAllocator(), m.vertexBuffer.buffer,
@@ -717,6 +722,11 @@ void TestLayer1::onUpdate(float timeStep) {
                                cameraController.getViewMatrix(), cameraController.getPosition());
     }
 
+
+    VulkanImGuiRenderer::BeingFrame();
+    onImGuiRender();
+    VulkanImGuiRenderer::EndFrame(frameData.commandBuffer);
+
     // end render pass
     vkCmdEndRendering(frameData.commandBuffer);
 
@@ -787,7 +797,14 @@ void TestLayer1::onUpdate(float timeStep) {
     vkDeviceWaitIdle(VulkanContext::getDevice());
 }
 
-void TestLayer1::onImGuiRender() {}
+void TestLayer1::onImGuiRender() {
+    ImGui::ShowDemoWindow();
+    ImGui::Begin("test");
+    VulkanImGuiRenderer::AddImage(textures["ab_crate_a"], {200,200});
+    VulkanImGuiRenderer::AddImage(textures["ab_crate_a_nm"], {200,200});
+    VulkanImGuiRenderer::AddImage(textures["ab_crate_a_sm"], {200,200});
+    ImGui::End();
+}
 
 bool TestLayer1::onEvent(const Engine::Event& event) {
     cameraController.onEvent(event);

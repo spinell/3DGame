@@ -30,6 +30,8 @@ add_executable(Game
     Renderer.cpp
     SceneRenderer.h
     SceneRenderer.cpp
+    vulkan/VulkanImGuiRenderer.h
+    vulkan/VulkanImGuiRenderer.cpp
     vulkan/vulkan.h
     vulkan/VulkanContext.h
     vulkan/VulkanContext.cpp
@@ -55,7 +57,6 @@ target_include_directories(Game
 
 target_link_libraries(Game
     PRIVATE
-        Engine::Engine
         GPUOpen::VulkanMemoryAllocator
         Vulkan::Vulkan
         Vulkan::Headers
@@ -63,6 +64,7 @@ target_link_libraries(Game
         unofficial::spirv-reflect
         glm::glm-header-only
         EnTT::EnTT
+        Engine::Engine
 )
 
 target_compile_definitions(Game

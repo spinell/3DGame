@@ -204,6 +204,11 @@ bool Initialize() {
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+
+    // require for ImGui Vulkan backend even if using Vulkan 1.3
+    // Otherwise ImGui Vulkan backend crash when moving a windows outside the
+    // main windows because it dynamic rendering function pointer will be null.
+    deviceExtensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
     // deviceExtensions.push_back(VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME);
 
     VkDeviceCreateInfo createInfo{};
