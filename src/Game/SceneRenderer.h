@@ -25,7 +25,6 @@ struct CMaterial {
     glm::vec4 specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     float     shininess = 32;
     glm::vec2 texScale  = glm::vec2(1.0f, 1.0f);
-    VkDescriptorSet descriptorSet0;
     VkDescriptorSet descriptorSet1;
 };
 struct CDirectionalLight {
@@ -85,4 +84,5 @@ private:
     std::shared_ptr<VulkanShaderProgram>  mMeshShader;
     GraphicPipeline      mMeshPipeline;
     VulkanDescriptorPool mDescriptorPool;
+    VkDescriptorSet      mDescriptorSet;
 };

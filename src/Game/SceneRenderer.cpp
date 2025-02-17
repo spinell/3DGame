@@ -86,8 +86,31 @@ SceneRenderer::SceneRenderer() {
     {
         mPerFrameBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(PerFrameData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         mLightDataBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(LightData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        mMeshPipeline =
-            VulkanContext::createGraphicPipeline(mMeshShader, true, true, true);
+        mMeshPipeline    = VulkanContext::createGraphicPipeline(mMeshShader, true, true, true);
+        mDescriptorSet   = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
+
+        VkDescriptorBufferInfo bufferInfo[2];
+        bufferInfo[0].buffer = mPerFrameBuffer.buffer;
+        bufferInfo[0].offset = 0;
+        bufferInfo[0].range  = VK_WHOLE_SIZE;
+        bufferInfo[1].buffer = mLightDataBuffer.buffer;
+        bufferInfo[1].offset = 0;
+        bufferInfo[1].range  = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet writeDescriptorSet[3]{};
+        writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[0].dstSet          = mDescriptorSet;
+        writeDescriptorSet[0].dstBinding      = 0;
+        writeDescriptorSet[0].descriptorCount = 1;
+        writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[0].pBufferInfo     = bufferInfo;
+        writeDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet[1].dstSet          = mDescriptorSet;
+        writeDescriptorSet[1].dstBinding      = 1;
+        writeDescriptorSet[1].descriptorCount = 1;
+        writeDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet[1].pBufferInfo     = &bufferInfo[1];
+        vkUpdateDescriptorSets(VulkanContext::getDevice(), 2, writeDescriptorSet, 0, nullptr);
 
         //VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline.descriptorSetLayout[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
         //                                  "MeshPipelineDescriptorSet0Layout");
@@ -196,36 +219,16 @@ void SceneRenderer::render(entt::registry*  registry,
         vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mMeshPipeline.pipeline);
 
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            mMeshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
+            &mDescriptorSet, 0, nullptr);
+
         PushData pushData{};
         auto view           = mRegistry->view<CTransform, CMesh, CMaterial>();
         for (auto [entity, ctrans, cmesh, cmat] : view.each()) {
 
             if(cmat.descriptorSet1 == VK_NULL_HANDLE) {
-                cmat.descriptorSet0 = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[0]);
                 cmat.descriptorSet1 = mDescriptorPool.allocate(mMeshPipeline.descriptorSetLayout[1]);
-
-                VkDescriptorBufferInfo bufferInfo[2];
-                bufferInfo[0].buffer = mPerFrameBuffer.buffer;
-                bufferInfo[0].offset = 0;
-                bufferInfo[0].range  = VK_WHOLE_SIZE;
-                bufferInfo[1].buffer = mLightDataBuffer.buffer;
-                bufferInfo[1].offset = 0;
-                bufferInfo[1].range  = VK_WHOLE_SIZE;
-
-                VkWriteDescriptorSet writeDescriptorSet[3]{};
-                writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writeDescriptorSet[0].dstSet          = cmat.descriptorSet0;
-                writeDescriptorSet[0].dstBinding      = 0;
-                writeDescriptorSet[0].descriptorCount = 1;
-                writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                writeDescriptorSet[0].pBufferInfo     = bufferInfo;
-                writeDescriptorSet[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writeDescriptorSet[1].dstSet          = cmat.descriptorSet0;
-                writeDescriptorSet[1].dstBinding      = 1;
-                writeDescriptorSet[1].descriptorCount = 1;
-                writeDescriptorSet[1].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                writeDescriptorSet[1].pBufferInfo     = &bufferInfo[1];
-                vkUpdateDescriptorSets(VulkanContext::getDevice(), 2, writeDescriptorSet, 0, nullptr);
 
                 VkDescriptorImageInfo descriptorImageInfo;
                 descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
@@ -265,9 +268,6 @@ void SceneRenderer::render(entt::registry*  registry,
             pushData.shininess = cmat.shininess;
             pushData.texScale  = cmat.texScale;
 
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    mMeshPipeline.pipelineLayout, 0 /*firstSet*/, 1 /*nbSet*/,
-                                    &cmat.descriptorSet0, 0, nullptr);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     mMeshPipeline.pipelineLayout, 1 /*firstSet*/, 1 /*nbSet*/,
                                     &cmat.descriptorSet1, 0, nullptr);
