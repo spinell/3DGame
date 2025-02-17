@@ -71,18 +71,26 @@ public:
     void setUseBlinnPhong(bool useBlinnPhong) { mUseBlinnPhong = useBlinnPhong;}
     bool isUseBlinnPhong() const { return mUseBlinnPhong; }
     void toggleUseBlinnPhong() { mUseBlinnPhong = !mUseBlinnPhong; }
+
     void setUseGammaCorrection(bool useGammaCorrection) { mUseGammaCorrection = useGammaCorrection;}
     bool isUseGammaCorrection() const { return mUseGammaCorrection; }
     void toggleGammaCorrection() { mUseGammaCorrection = !mUseGammaCorrection; }
+
+    void setGammaCorrectionValue(float gammaValue) { mGamma = gammaValue;}
+    float getGammaCorrectionValue() const { return mGamma; }
+
+    void setAmbientLight(glm::vec3 ambient) { mAmbientLight = ambient;}
+    glm::vec3 getAmbientLight() const { return mAmbientLight; }
 private:
-    entt::registry* mRegistry{};
-    bool                 mUseBlinnPhong = true;
-    bool                 mUseGammaCorrection = true;
-    float                mGamma = 2.2f;
-    Buffer               mPerFrameBuffer;
-    Buffer               mLightDataBuffer;
-    std::shared_ptr<VulkanShaderProgram>  mMeshShader;
-    GraphicPipeline      mMeshPipeline;
-    VulkanDescriptorPool mDescriptorPool;
-    VkDescriptorSet      mDescriptorSet;
+    entt::registry*                      mRegistry{};
+    bool                                 mUseBlinnPhong      = true;
+    bool                                 mUseGammaCorrection = true;
+    float                                mGamma              = 2.2f;
+    glm::vec3                            mAmbientLight       = {0.01f, 0.01f, 0.01f};
+    Buffer                               mPerFrameBuffer;
+    Buffer                               mLightDataBuffer;
+    std::shared_ptr<VulkanShaderProgram> mMeshShader;
+    GraphicPipeline                      mMeshPipeline;
+    VulkanDescriptorPool                 mDescriptorPool;
+    VkDescriptorSet                      mDescriptorSet;
 };

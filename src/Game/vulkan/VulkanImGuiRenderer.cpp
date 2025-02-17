@@ -10,6 +10,8 @@
 
 namespace {
 
+VkFormat format = VK_FORMAT_B8G8R8A8_UNORM;
+
 // Callback called by SDL
 // this is used to send event to ImGui SDL backend.
 // Otherwisem we need to call ImGui_ImplSDL3_ProcessEvent() durent event
@@ -49,7 +51,6 @@ bool VulkanImGuiRenderer::Init(const Engine::SDL3Window& windows) {
     //
     // ImGui Vulkan setup with dynamic rendering
     //
-    VkFormat                      format = VK_FORMAT_B8G8R8A8_UNORM;
     VkPipelineRenderingCreateInfo renderingCreateInfo{};
     renderingCreateInfo.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     renderingCreateInfo.pNext                   = nullptr;

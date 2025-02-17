@@ -147,7 +147,7 @@ void SceneRenderer::render(entt::registry*  registry,
         perFrameData.projection = proj;
         perFrameData.view = view;
         perFrameData.viewPosition = viewPosition;
-        perFrameData.ambientLight = glm::vec4(0.01f, 0.01f, 0.01f, 1.0f);
+        perFrameData.ambientLight = glm::vec4(mAmbientLight, 1.0f);
         perFrameData.useBlinnPhong = mUseBlinnPhong;
         perFrameData.useGammaCorrection = mUseGammaCorrection;
         perFrameData.gamma = mGamma;

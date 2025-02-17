@@ -798,11 +798,59 @@ void TestLayer1::onUpdate(float timeStep) {
 }
 
 void TestLayer1::onImGuiRender() {
-    ImGui::ShowDemoWindow();
-    ImGui::Begin("test");
-    VulkanImGuiRenderer::AddImage(textures["ab_crate_a"], {200,200});
-    VulkanImGuiRenderer::AddImage(textures["ab_crate_a_nm"], {200,200});
-    VulkanImGuiRenderer::AddImage(textures["ab_crate_a_sm"], {200,200});
+    ImGui::Begin("Explorer");
+
+    static bool useGamma = mSceneRenderer->isUseGammaCorrection();
+    if(ImGui::Checkbox("Use Gamma correction", &useGamma)) {
+        mSceneRenderer->setUseGammaCorrection(useGamma);
+    }
+
+    ImGui::SameLine();
+
+    static float gammaValue = mSceneRenderer->getGammaCorrectionValue();
+    if(ImGui::DragFloat("Gamma", &gammaValue, 1.0f, 0.0f, 10.0f)) {
+        mSceneRenderer->setGammaCorrectionValue(gammaValue);
+    }
+
+    static auto ambientLight = mSceneRenderer->getAmbientLight();
+    if(ImGui::ColorEdit3("Ambient Light", &ambientLight.x, ImGuiColorEditFlags_Float)) {
+        mSceneRenderer->setAmbientLight(ambientLight);
+    }
+
+    for(const auto& entity : mRegistry.view<CDirectionalLight>()) {
+        auto& light = mRegistry.get<CDirectionalLight>(entity);
+        ImGui::TextUnformatted("Directional Light");
+        ImGui::ColorEdit3("Color:", &light.color.x);
+        ImGui::ColorEdit3("Direction:", &light.direction.x);
+    }
+    unsigned int i = 0;
+    for(const auto& entity : mRegistry.view<CTransform, CPointLight>()) {
+        auto& trans = mRegistry.get<CTransform>(entity);
+        auto& light = mRegistry.get<CPointLight>(entity);
+
+        ImGui::Text("Point Lights %i", i);
+        ImGui::PushID(i);
+        ImGui::Checkbox("Enable",     &light.enable);
+        ImGui::DragFloat3("Position", &trans.position.x);
+        ImGui::ColorEdit3("Color",    &light.diffuse.x);
+        ImGui::DragFloat("Range",     &light.range, 1.0f, 0.1f);
+        ImGui::PopID();
+        i++;
+    }
+    for(const auto& entity : mRegistry.view<CTransform, CSpotLight>()) {
+        auto& trans = mRegistry.get<CTransform>(entity);
+        auto& light = mRegistry.get<CSpotLight>(entity);
+
+        ImGui::Text("Spot Lights %i", i);
+        ImGui::PushID(i);
+        ImGui::Checkbox("Enable",      &light.enable);
+        ImGui::DragFloat3("Position",  &trans.position.x);
+        ImGui::ColorEdit3("Color",     &light.color.x);
+        ImGui::DragFloat("Range",      &light.range, 1.0f, 0.1f);
+        ImGui::DragFloat("CutOffAngle",&light.cutOffAngle, 1.0f, 1.0f, 180.f);
+        ImGui::PopID();
+        i++;
+    }
     ImGui::End();
 }
 
