@@ -489,6 +489,8 @@ void TestLayer1::onUpdate(float timeStep) {
 
     // render stuff
     {
+        VulkanContext::CmdBeginsLabel(frameData.commandBuffer, "Scene");
+
         VkViewport viewport;
         viewport.x        = 0;
         viewport.y        = 0;
@@ -517,11 +519,15 @@ void TestLayer1::onUpdate(float timeStep) {
         mSceneRenderer->render(&mRegistry, frameData.commandBuffer,
                                cameraController.getProjectonMatrix(),
                                cameraController.getViewMatrix(), cameraController.getPosition());
+
+        VulkanContext::CmdEndLabel(frameData.commandBuffer);
     }
 
 
     VulkanImGuiRenderer::BeingFrame();
+    VulkanContext::CmdBeginsLabel(frameData.commandBuffer, "ImGUI");
     onImGuiRender();
+    VulkanContext::CmdEndLabel(frameData.commandBuffer);
     VulkanImGuiRenderer::EndFrame(frameData.commandBuffer);
 
     // end render pass

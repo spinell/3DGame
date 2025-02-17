@@ -47,8 +47,6 @@ uint32_t         getGraphicQueueFamilyIndex();
 VkQueue          getGraphicQueue();
 VmaAllocator     getVmaAllocator();
 
-void setDebugObjectName(uint64_t objectHandle, VkObjectType objectType, std::string name);
-
 bool isLayerSupported();
 bool isInstanceExtensionSupported();
 bool isDeviceExtensionSupported();
@@ -81,5 +79,16 @@ void                          copyBufferToImage(
                                     VkFormat          format,
                                     uint32_t          mipLevels,
                                     VkImageUsageFlags usageFlags) noexcept;
+
+// Debugging
+void CmdBeginsLabel(VkCommandBuffer cmd, std::string_view label);
+void CmdEndLabel(VkCommandBuffer cmd);
+void CmdInsertLabel(VkCommandBuffer cmd, std::string_view label);
+void setDebugObjectName(uint64_t objectHandle, VkObjectType objectType, std::string name);
+
+template<class T>
+void setDebugObjectName(uint64_t objectHandle, VkObjectType objectType, std::string name) {
+
+}
 
 } // namespace VulkanContext

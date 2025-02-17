@@ -1163,7 +1163,7 @@ Texture createTexture(uint32_t          width,
 void setDebugObjectName(uint64_t     objectHandle,
                         VkObjectType objectType,
                         std::string  name) {
-    auto func = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(sDevice, "vkSetDebugUtilsObjectNameEXT");
+    static auto func = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(sDevice, "vkSetDebugUtilsObjectNameEXT");
     if(func){
         VkDebugUtilsObjectNameInfoEXT nameInfo{};
         nameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
@@ -1172,6 +1172,43 @@ void setDebugObjectName(uint64_t     objectHandle,
         nameInfo.objectType   = objectType;
         nameInfo.pObjectName  = name.c_str();
         func(sDevice, &nameInfo);
+    }
+}
+
+void CmdBeginsLabel(VkCommandBuffer cmd, std::string_view label) {
+    auto func = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(sInstance, "vkCmdBeginDebugUtilsLabelEXT");
+    if(func){
+        VkDebugUtilsLabelEXT info{};
+        info.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        info.pNext        = nullptr;
+        info.pLabelName   = label.data();
+        info.color[0]     = 0;
+        info.color[1]     = 0;
+        info.color[2]     = 0;
+        info.color[3]     = 0;
+        func(cmd, &info);
+    }
+}
+
+void CmdEndLabel(VkCommandBuffer cmd) {
+    static auto func = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(sInstance, "vkCmdEndDebugUtilsLabelEXT");
+    if(func){
+        func(cmd);
+    }
+}
+
+void CmdInsertLabel(VkCommandBuffer cmd, std::string_view label) {
+    static auto func = (PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetInstanceProcAddr(sInstance, "vkCmdInsertDebugUtilsLabelEXT");
+    if(func){
+        VkDebugUtilsLabelEXT info{};
+        info.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        info.pNext        = nullptr;
+        info.pLabelName   = label.data();
+        info.color[0]     = 0;
+        info.color[1]     = 0;
+        info.color[2]     = 0;
+        info.color[3]     = 0;
+        func(cmd, &info);
     }
 }
 
