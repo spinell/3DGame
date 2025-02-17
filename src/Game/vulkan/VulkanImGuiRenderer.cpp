@@ -112,20 +112,20 @@ void VulkanImGuiRenderer::EndFrame(VkCommandBuffer cmd) {
     }
 }
 
-void VulkanImGuiRenderer::AddImage(Texture       texture,
-                                   const ImVec2& image_size,
-                                   const ImVec2& uv0,
-                                   const ImVec2& uv1,
-                                   const ImVec4& tint_col,
-                                   const ImVec4& border_col) {
+void VulkanImGuiRenderer::AddImage(const VulkanTexturePtr& texture,
+                                   const ImVec2&           image_size,
+                                   const ImVec2&           uv0,
+                                   const ImVec2&           uv1,
+                                   const ImVec4&           tint_col,
+                                   const ImVec4&           border_col) {
     assert(gDescriptorSetCache.size() < nbExtraDecriptorSet);
 
     VkDescriptorSet ds{};
-    auto            it = gDescriptorSetCache.find(texture.view);
+    auto            it = gDescriptorSetCache.find(texture->getImageView());
     if (it == gDescriptorSetCache.end()) {
-        ds = ImGui_ImplVulkan_AddTexture(texture.sampler, texture.view,
+        ds = ImGui_ImplVulkan_AddTexture(texture->getSampler(), texture->getImageView(),
                                          VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
-        gDescriptorSetCache.emplace(texture.view, ds);
+        gDescriptorSetCache.emplace(texture->getImageView(), ds);
     } else {
         ds = it->second;
     }

@@ -12,6 +12,7 @@
 #include "vulkan/VulkanUtils.h"
 #include "vulkan/VulkanShaderProgram.h"
 #include "vulkan/VulkanImGuiRenderer.h"
+#include "vulkan/VulkanTexture.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -27,214 +28,6 @@
 #include <array>
 #include <filesystem>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
-Texture createTextureFromFile(std::filesystem::path path, bool srgb, bool generateMipmap) {
-    std::string pathString = path.string();
-
-    int   width, height, channels;
-    auto* data = stbi_load(pathString.c_str(), &width, &height, &channels, 4);
-    if (data) {
-        ENGINE_INFO("Loading {}", pathString);
-
-        //
-        // create the texture
-        //
-        uint32_t mipLevels = 1;
-        VkFormat format = srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
-        VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        if(generateMipmap) {
-            // This is required to allow generating mipmap with vkCmdBlitImage.
-            // vkCmdBlitImage is a transfert operation.
-            usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-            mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
-        }
-        Texture texture = VulkanContext::createTexture(width, height, format, mipLevels, usage);
-        texture.width  = width;
-        texture.height = height;
-
-        VulkanContext::setDebugObjectName((uint64_t)texture.image,   VK_OBJECT_TYPE_IMAGE,     path.string().c_str());
-        VulkanContext::setDebugObjectName((uint64_t)texture.view,    VK_OBJECT_TYPE_IMAGE_VIEW,path.string().c_str());
-        VulkanContext::setDebugObjectName((uint64_t)texture.sampler, VK_OBJECT_TYPE_SAMPLER,   path.string().c_str());
-
-        //
-        // create staging buffer
-        //
-        VkDeviceSize    imageSize     = texture.width * texture.height * 4;
-        auto            stagingBuffer = VulkanContext::createBuffer(
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        //
-        // Copy data into staging buffer
-        //
-        void* ptr{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
-        std::memcpy(ptr, data, imageSize);
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
-
-        stbi_image_free(data);
-
-        //
-        // Copy the staging buffer into the texture
-        //
-        VkCommandBuffer cmd = VulkanContext::beginSingleTimeCommands();
-
-        VulkanUtils::transitionImageLayout(
-            cmd, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-            VK_ACCESS_2_TRANSFER_WRITE_BIT, mipLevels);
-
-        VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image,
-                                         static_cast<uint32_t>(texture.width),
-                                         static_cast<uint32_t>(texture.height));
-
-        // Generate mipmap
-        if(generateMipmap) {
-            VkImageMemoryBarrier barrier{};
-            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.image = texture.image;
-            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            barrier.subresourceRange.levelCount = 1;
-
-            int32_t mipWidth  = texture.width;
-            int32_t mipHeight = texture.height;
-            for (uint32_t i = 1; i < mipLevels; i++) {
-                barrier.subresourceRange.baseMipLevel = i - 1;
-                barrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                barrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-                vkCmdPipelineBarrier(cmd,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                    0, nullptr,
-                    0, nullptr,
-                    1, &barrier);
-
-                VkImageBlit blit{};
-                blit.srcOffsets[0] = {0, 0, 0};
-                blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
-                blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                blit.srcSubresource.mipLevel = i - 1;
-                blit.srcSubresource.baseArrayLayer = 0;
-                blit.srcSubresource.layerCount = 1;
-                blit.dstOffsets[0] = {0, 0, 0};
-                blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-                blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                blit.dstSubresource.mipLevel = i;
-                blit.dstSubresource.baseArrayLayer = 0;
-                blit.dstSubresource.layerCount = 1;
-
-                vkCmdBlitImage(cmd,
-                    texture.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    1, &blit,
-                    VK_FILTER_LINEAR);
-
-                barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-                vkCmdPipelineBarrier(cmd,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                    0, nullptr,
-                    0, nullptr,
-                    1, &barrier);
-
-                if (mipWidth > 1) mipWidth /= 2;
-                if (mipHeight > 1) mipHeight /= 2;
-            }
-
-            barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-            barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            vkCmdPipelineBarrier(cmd,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-                0, nullptr,
-                0, nullptr,
-                1, &barrier);
-
-        } else {
-            VulkanUtils::transitionImageLayout(
-                cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                VK_ACCESS_2_SHADER_READ_BIT, mipLevels);
-        }
-
-        VulkanContext::endSingleTimeCommands(cmd);
-
-        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
-                         stagingBuffer.allocation);
-
-        return texture;
-    }
-    ENGINE_ERROR("Failed to load {}", pathString);
-    return {};
-}
-
-Texture createCheckBoardTexture() {
-    Texture texture =
-        VulkanContext::createTexture(10, 10, VK_FORMAT_R8G8B8A8_UNORM, 1,
-                                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-
-    VkCommandBuffer cmd           = VulkanContext::beginSingleTimeCommands();
-    VkDeviceSize    imageSize     = texture.width * texture.height * 4;
-    auto            stagingBuffer = VulkanContext::createBuffer(
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    void* ptr{};
-    vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
-    for (uint32_t row = 0; row < texture.height; row++) {
-        for (uint32_t col = 0; col < texture.width; col++) {
-            auto* color = (char*)ptr;
-            if (col % 2) {
-                color[0] = 255;
-                color[1] = 0;
-                color[2] = 255;
-                color[3] = 255;
-            } else {
-                color[0] = 0;
-                color[1] = 0;
-                color[2] = 255;
-                color[3] = 255;
-            }
-            ptr = (char*)ptr + 4;
-        }
-    }
-    vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
-
-    VulkanUtils::transitionImageLayout(
-        cmd, texture.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT, 1);
-
-    VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture.image,
-                                     static_cast<uint32_t>(texture.width),
-                                     static_cast<uint32_t>(texture.height));
-
-    VulkanUtils::transitionImageLayout(
-        cmd, texture.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_2_SHADER_READ_BIT, 1);
-    VulkanContext::endSingleTimeCommands(cmd);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
-                     stagingBuffer.allocation);
-
-    return texture;
-};
-
 struct FrameData {
     VkCommandPool   commandPool;
     VkCommandBuffer commandBuffer;
@@ -246,10 +39,9 @@ GraphicPipeline  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 Texture depthBuffer;
-
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
-std::map<std::string,Texture> textures;
+std::map<std::string,VulkanTexturePtr> gTextureCache;
 entt::entity light1;
 entt::entity light2;
 entt::entity light3;
@@ -265,18 +57,21 @@ void TestLayer1::onAttach() {
     cameraController.setPosition({-2, 2, 2});
 
     // generate mipmap for normal and specular map ?
-    textures["ab_crate_a"]        = createTextureFromFile("./data/ab_crate_a.png", true, true);
-    textures["ab_crate_a_nm"]     = createTextureFromFile("./data/ab_crate_a_nm.png", false, true);
-    textures["ab_crate_a_sm"]     = createTextureFromFile("./data/ab_crate_a_sm.png", false, true);
-    textures["brick_wall2"]       = createTextureFromFile("./data/brick_wall2-diff-512.tga", true, true);
-    textures["brick_wall2_sm"]    = createTextureFromFile("./data/brick_wall2-spec-512.tga", false, true);
-    textures["brick_wall2_nm"]    = createTextureFromFile("./data/brick_wall2-nor-512.tga", false, true);
-    textures["metal1"]            = createTextureFromFile("./data/metal1-dif-1024.tga", true, true);
-    textures["metal1_sm"]         = createTextureFromFile("./data/metal1-spec-1024.tga", false, true);
-    textures["metal1_nm"]         = createTextureFromFile("./data/metal1-nor-1024.tga", false, true);
-    textures["FloorSandStone"]    = createTextureFromFile("./data/FloorDiffuse.png", true, true); // FloorAmbientOcclusion
-    textures["FloorSandStone_nm"] = createTextureFromFile("./data/FloorNormal.png", false, true);
-    textures["FloorSandStone_sm"] = createTextureFromFile("./data/FloorSpacular.png", false, true);
+    gTextureCache["ab_crate_a"]        = VulkanTexture::Create("./data/ab_crate_a.png", true, true);
+    gTextureCache["ab_crate_a_nm"]     = VulkanTexture::Create("./data/ab_crate_a_nm.png", false, true);
+    gTextureCache["ab_crate_a_sm"]     = VulkanTexture::Create("./data/ab_crate_a_sm.png", false, true);
+    gTextureCache["brick_wall2"]       = VulkanTexture::Create("./data/brick_wall2-diff-512.tga", true, true);
+    gTextureCache["brick_wall2_sm"]    = VulkanTexture::Create("./data/brick_wall2-spec-512.tga", false, true);
+    gTextureCache["brick_wall2_nm"]    = VulkanTexture::Create("./data/brick_wall2-nor-512.tga", false, true);
+    gTextureCache["metal1"]            = VulkanTexture::Create("./data/metal1-dif-1024.tga", true, true);
+    gTextureCache["metal1_sm"]         = VulkanTexture::Create("./data/metal1-spec-1024.tga", false, true);
+    gTextureCache["metal1_nm"]         = VulkanTexture::Create("./data/metal1-nor-1024.tga", false, true);
+    gTextureCache["FloorSandStone"]    = VulkanTexture::Create("./data/FloorDiffuse.png", true, true); // FloorAmbientOcclusion
+    gTextureCache["FloorSandStone_nm"] = VulkanTexture::Create("./data/FloorNormal.png", false, true);
+    gTextureCache["FloorSandStone_sm"] = VulkanTexture::Create("./data/FloorSpacular.png", false, true);
+    gTextureCache["WhiteTexture"] = VulkanTexture::CreateWhiteTexture();
+    gTextureCache["BlackTexture"] = VulkanTexture::CreateBlackTexture();
+    gTextureCache["CheckBoard"]   = VulkanTexture::CreateCheckBoard();
 
     auto meshCube      = Mesh::CreateMeshCube(1.0f);
     auto meshGrid      = Mesh::CreateGrid(1.0f, 1.0f, 2, 2);
@@ -302,9 +97,9 @@ void TestLayer1::onAttach() {
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.shininess                    = 32.0f;
-        mat.diffuseMap                   = textures["metal1"];
-        mat.normalMap                    = textures["metal1_nm"];
-        mat.specularMap                  = textures["metal1_sm"];
+        mat.diffuseMap                   = gTextureCache["metal1"];
+        mat.normalMap                    = gTextureCache["metal1_nm"];
+        mat.specularMap                  = gTextureCache["metal1_sm"];
         mat.texScale                     = glm::vec2(5.f, 5.0f);
     }
     // left wall (-x)
@@ -319,9 +114,9 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                   = textures["brick_wall2"];
-        mat.normalMap                    = textures["brick_wall2_nm"];
-        mat.specularMap                  = textures["brick_wall2_sm"];
+        mat.diffuseMap                   = gTextureCache["brick_wall2"];
+        mat.normalMap                    = gTextureCache["brick_wall2_nm"];
+        mat.specularMap                  = gTextureCache["brick_wall2_sm"];
         mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // right wall (+x)
@@ -336,9 +131,9 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                   = textures["brick_wall2"];
-        mat.normalMap                    = textures["brick_wall2_nm"];
-        mat.specularMap                  = textures["brick_wall2_sm"];
+        mat.diffuseMap                   = gTextureCache["brick_wall2"];
+        mat.normalMap                    = gTextureCache["brick_wall2_nm"];
+        mat.specularMap                  = gTextureCache["brick_wall2_sm"];
         mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // back wall (-z)
@@ -353,9 +148,9 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                   = textures["brick_wall2"];
-        mat.normalMap                    = textures["brick_wall2_nm"];
-        mat.specularMap                  = textures["brick_wall2_sm"];
+        mat.diffuseMap                   = gTextureCache["brick_wall2"];
+        mat.normalMap                    = gTextureCache["brick_wall2_nm"];
+        mat.specularMap                  = gTextureCache["brick_wall2_sm"];
         mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
     // front wall (+z)
@@ -370,9 +165,9 @@ void TestLayer1::onAttach() {
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                   = textures["brick_wall2"];
-        mat.normalMap                    = textures["brick_wall2_nm"];
-        mat.specularMap                  = textures["brick_wall2_sm"];
+        mat.diffuseMap                   = gTextureCache["brick_wall2"];
+        mat.normalMap                    = gTextureCache["brick_wall2_nm"];
+        mat.specularMap                  = gTextureCache["brick_wall2_sm"];
         mat.texScale                     = glm::vec2(10.f, 2.0f);
     }
 
@@ -385,9 +180,9 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.normalMap                             = textures["ab_crate_a_nm"];
-        mat.specularMap                           = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_nm"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_sm"];
     }
     {
         auto e                                    = mRegistry.create();
@@ -397,9 +192,9 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.normalMap                             = textures["ab_crate_a_nm"];
-        mat.specularMap                           = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_nm"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_sm"];
     }
     {
         auto e                                    = mRegistry.create();
@@ -409,9 +204,9 @@ void TestLayer1::onAttach() {
         mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.normalMap                             = textures["ab_crate_a_nm"];
-        mat.specularMap                           = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_nm"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_sm"];
     }
 
 
@@ -425,9 +220,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
             mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
             mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
             mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
-            mat.diffuseMap                            = textures["FloorSandStone"];
-            mat.normalMap                             = textures["FloorSandStone_nm"];
-            mat.specularMap                           = textures["FloorSandStone_sm"];
+            mat.diffuseMap                            = gTextureCache["FloorSandStone"];
+            mat.normalMap                             = gTextureCache["FloorSandStone_nm"];
+            mat.specularMap                           = gTextureCache["FloorSandStone_sm"];
         }
         // sphere
         {
@@ -438,9 +233,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
             mat.ambient                               = {1.0f, 1.0f, 1.0f, 1.0f};
             mat.diffuse                               = {1.0f, 1.0f, 1.0f, 1.0f};
             mat.specular                              = {1.0f, 1.0f, 1.0f, 1.0f};
-            mat.diffuseMap                            = textures["FloorSandStone"];
-            mat.normalMap                             = textures["FloorSandStone_nm"];
-            mat.specularMap                           = textures["FloorSandStone_sm"];
+            mat.diffuseMap                            = gTextureCache["FloorSandStone"];
+            mat.normalMap                             = gTextureCache["FloorSandStone_nm"];
+            mat.specularMap                           = gTextureCache["FloorSandStone_sm"];
         }
     };
     createCynlinderAndSphere({9.0f, 1.0f, 5.0f});
@@ -471,9 +266,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.specularMap                           = textures["ab_crate_a_nm"];
-        mat.normalMap                             = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_nm"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_sm"];
         return e;
     };
     light1 = createPointLight({10, 8, -6}, 10, 10);
@@ -490,9 +285,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.specularMap                           = textures["ab_crate_a_nm"];
-        mat.normalMap                             = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_nm"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_sm"];
         return e;
     };
     //createDirectionalLight({0.0, -1.0, 1.0});
@@ -510,9 +305,9 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.specular                              = {1.0f, 1.0f, 0.0f, 1.0f};
-        mat.diffuseMap                            = textures["ab_crate_a"];
-        mat.specularMap                           = textures["ab_crate_a_nm"];
-        mat.normalMap                             = textures["ab_crate_a_sm"];
+        mat.diffuseMap                            = gTextureCache["ab_crate_a"];
+        mat.specularMap                           = gTextureCache["ab_crate_a_nm"];
+        mat.normalMap                             = gTextureCache["ab_crate_a_sm"];
         return e;
     };
     flashLight = createSpotLight({0, 10, 0}, {1, -1, 0});
@@ -578,6 +373,11 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
 }
 
 void TestLayer1::onDetach() {
+    // destroy the registry frist.
+    // All component which hold shared ptr on vulkan ressource
+    // will be released.
+    mRegistry.clear();
+
     vkDeviceWaitIdle(VulkanContext::getDevice());
 
     VulkanImGuiRenderer::Shutdown();
@@ -588,11 +388,8 @@ void TestLayer1::onDetach() {
         vmaDestroyBuffer(VulkanContext::getVmaAllocator(), m.indexBuffer.buffer,
                          m.indexBuffer.allocation);
     }
-    for (const auto& [name, texture] : textures) {
-        vmaDestroyImage(VulkanContext::getVmaAllocator(), texture.image, texture.allocation);
-        vkDestroyImageView(VulkanContext::getDevice(), texture.view, nullptr);
-        vkDestroySampler(VulkanContext::getDevice(), texture.sampler, nullptr);
-    }
+
+    gTextureCache.clear();
 
     delete mSceneRenderer;
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
@@ -851,6 +648,11 @@ void TestLayer1::onImGuiRender() {
         ImGui::PopID();
         i++;
     }
+
+    VulkanImGuiRenderer::AddImage(gTextureCache["WhiteTexture"], ImVec2(100,100));
+    VulkanImGuiRenderer::AddImage(gTextureCache["BlackTexture"], ImVec2(100,100));
+    VulkanImGuiRenderer::AddImage(gTextureCache["CheckBoard"], ImVec2(100,100));
+
     ImGui::End();
 }
 

@@ -3,6 +3,7 @@
 #include "Renderer.h"
 
 #include "vulkan/VulkanContext.h"
+#include "vulkan/VulkanTexture.h"
 #include "vulkan/VulkanShaderProgram.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -232,8 +233,8 @@ void SceneRenderer::render(entt::registry*  registry,
 
                 VkDescriptorImageInfo descriptorImageInfo;
                 descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-                descriptorImageInfo.imageView   = cmat.diffuseMap.view;
-                descriptorImageInfo.sampler     = cmat.diffuseMap.sampler;
+                descriptorImageInfo.imageView   = cmat.diffuseMap->getImageView();
+                descriptorImageInfo.sampler     = cmat.diffuseMap->getSampler();
 
                 VkWriteDescriptorSet writeDescriptorSet2[1]{};
                 writeDescriptorSet2[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -245,14 +246,14 @@ void SceneRenderer::render(entt::registry*  registry,
                 vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
 
                 descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-                descriptorImageInfo.imageView   = cmat.specularMap.view;
-                descriptorImageInfo.sampler     = cmat.specularMap.sampler;
+                descriptorImageInfo.imageView   = cmat.specularMap->getImageView();
+                descriptorImageInfo.sampler     = cmat.specularMap->getSampler();
                 writeDescriptorSet2[0].dstBinding =3;
                 vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
 
                 descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
-                descriptorImageInfo.imageView   = cmat.normalMap.view;
-                descriptorImageInfo.sampler     = cmat.normalMap.sampler;
+                descriptorImageInfo.imageView   = cmat.normalMap->getImageView();
+                descriptorImageInfo.sampler     = cmat.normalMap->getSampler();
                 writeDescriptorSet2[0].dstBinding =4;
                 vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
             }

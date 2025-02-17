@@ -2,10 +2,12 @@
 #include "Mesh.h"
 
 #include "vulkan/VulkanDescriptorPool.h"
+#include "vulkan/VulkanTexture.h"
 #include "vulkan/vulkan.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
+
 #include <memory>
 
 struct CTransform {
@@ -17,15 +19,15 @@ struct CMesh {
     Mesh mesh;
 };
 struct CMaterial {
-    glm::vec4 ambient = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    glm::vec4 diffuse = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    Texture   diffuseMap;
-    Texture   normalMap;
-    Texture   specularMap;
-    glm::vec4 specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    float     shininess = 32;
-    glm::vec2 texScale  = glm::vec2(1.0f, 1.0f);
-    VkDescriptorSet descriptorSet1;
+    glm::vec4        ambient = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::vec4        diffuse = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    VulkanTexturePtr diffuseMap;
+    VulkanTexturePtr normalMap;
+    VulkanTexturePtr specularMap;
+    glm::vec4        specular  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    float            shininess = 32;
+    glm::vec2        texScale  = glm::vec2(1.0f, 1.0f);
+    VkDescriptorSet  descriptorSet1;
 };
 struct CDirectionalLight {
     bool      enable = true;
@@ -68,19 +70,22 @@ public:
                 const glm::mat4& view,
                 const glm::vec3& viewPosition);
 
-    void setUseBlinnPhong(bool useBlinnPhong) { mUseBlinnPhong = useBlinnPhong;}
+    void setUseBlinnPhong(bool useBlinnPhong) { mUseBlinnPhong = useBlinnPhong; }
     bool isUseBlinnPhong() const { return mUseBlinnPhong; }
     void toggleUseBlinnPhong() { mUseBlinnPhong = !mUseBlinnPhong; }
 
-    void setUseGammaCorrection(bool useGammaCorrection) { mUseGammaCorrection = useGammaCorrection;}
+    void setUseGammaCorrection(bool useGammaCorrection) {
+        mUseGammaCorrection = useGammaCorrection;
+    }
     bool isUseGammaCorrection() const { return mUseGammaCorrection; }
     void toggleGammaCorrection() { mUseGammaCorrection = !mUseGammaCorrection; }
 
-    void setGammaCorrectionValue(float gammaValue) { mGamma = gammaValue;}
+    void  setGammaCorrectionValue(float gammaValue) { mGamma = gammaValue; }
     float getGammaCorrectionValue() const { return mGamma; }
 
-    void setAmbientLight(glm::vec3 ambient) { mAmbientLight = ambient;}
+    void      setAmbientLight(glm::vec3 ambient) { mAmbientLight = ambient; }
     glm::vec3 getAmbientLight() const { return mAmbientLight; }
+
 private:
     entt::registry*                      mRegistry{};
     bool                                 mUseBlinnPhong      = true;
