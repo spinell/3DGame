@@ -407,7 +407,11 @@ void TestLayer1::onDetach() {
 }
 
 void TestLayer1::onUpdate(float timeStep) {
-    cameraController.onUpdate(timeStep);
+
+    if(!ImGui::GetIO().WantCaptureKeyboard || !ImGui::GetIO().WantCaptureMouse) {
+        cameraController.onUpdate(timeStep);
+    }
+
     auto& lightTrans = mRegistry.get<CTransform>(flashLight);
     auto& light = mRegistry.get<CSpotLight>(flashLight);
     lightTrans.position = cameraController.getPosition();
@@ -663,6 +667,10 @@ void TestLayer1::onImGuiRender() {
 }
 
 bool TestLayer1::onEvent(const Engine::Event& event) {
+    if(ImGui::GetIO().WantCaptureKeyboard || ImGui::GetIO().WantCaptureMouse) {
+        return false;
+    }
+
     cameraController.onEvent(event);
 
     event.dispatch<Engine::WindowResizedEvent>([this](const auto& e) {
