@@ -70,6 +70,12 @@ Engine::Application::Application() {
 }
 
 Engine::Application::~Application() {
+    // delete the layer stack first.
+    // The layer stack is created on the stack so it will be automaticly delete.
+    // But, The destructor call "detach" on each layer. Layer should delete ressources
+    // before everything is shutdown. Layer may also access to the Log system.
+    mLayerStack.clear();
+
     delete mWindow;
     SDL_Quit();
 
