@@ -203,12 +203,9 @@ std::shared_ptr<VulkanShaderProgram> VulkanShaderProgram::CreateFromSpirv(
         {
             uint32_t count = 0;
             reflectShaderModule.EnumerateDescriptorSets(&count, nullptr);
-            for (uint32_t setIdx = 0; setIdx < count; setIdx++) {
-                const SpvReflectDescriptorSet* reflectDescriptorSet =
-                    reflectShaderModule.GetDescriptorSet(setIdx);
-
-                if(!reflectDescriptorSet)
-                    continue;
+            std::vector<SpvReflectDescriptorSet*> descriptorSet(count);
+            reflectShaderModule.EnumerateDescriptorSets(&count, descriptorSet.data());
+            for (auto* reflectDescriptorSet: descriptorSet) {
 
                 for (uint32_t bindingIdx = 0; bindingIdx < reflectDescriptorSet->binding_count;
                      bindingIdx++) {

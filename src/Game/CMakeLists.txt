@@ -85,6 +85,7 @@ target_sources(Game
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang
 )
 
 add_custom_command(
@@ -105,6 +106,17 @@ add_custom_command(
     COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_vert.spv -stage vertex -entry vs_main
     COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/fullscreen_frag.spv -stage pixel  -entry ps_main
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
+    VERBATIM
+    USES_TERMINAL
+)
+
+add_custom_command(
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/skybox_vert.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/skybox_frag.spv
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/skybox_vert.spv -stage vertex -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/skybox_frag.spv -stage pixel  -entry ps_main
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang
     VERBATIM
     USES_TERMINAL
 )

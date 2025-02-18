@@ -9,19 +9,23 @@ class VulkanGraphicPipeline;
 class VulkanShaderProgram;
 using VulkanGraphicPipelinePtr = std::shared_ptr<VulkanGraphicPipeline>;
 
-struct VulkanPipelineCreateInfo {
+struct VulkanGraphicPipelineCreateInfo {
     std::string name;
+    std::shared_ptr<VulkanShaderProgram> shader;
+    VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
+    bool            enableDepthTest = true;
+    VkCompareOp     depthCompareOp  = VK_COMPARE_OP_LESS;
+    std::vector<VkVertexInputAttributeDescription> vertexInput = {};
+    uint32_t vertexStride = 0;
 };
 
 /// @brief
 class VulkanGraphicPipeline {
 public:
     /// @brief
+    /// @param createInfo
     /// @return
-    static VulkanGraphicPipelinePtr Create(std::shared_ptr<VulkanShaderProgram> shader,
-                                           bool enableDepthTest = false,
-                                           bool vertexLayout    = false,
-                                           bool cull            = false);
+    static VulkanGraphicPipelinePtr Create(const VulkanGraphicPipelineCreateInfo& createInfo);
 
     /// @brief
     VulkanGraphicPipeline() = default;

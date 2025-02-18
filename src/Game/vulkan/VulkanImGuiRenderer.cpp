@@ -103,7 +103,9 @@ void VulkanImGuiRenderer::EndFrame(VkCommandBuffer cmd) {
     // This will fill ImGui::GetDrawData()
     ImGui::Render();
 
+    VulkanContext::CmdBeginsLabel(cmd, "ImGUI");
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd, nullptr /*pipeline*/);
+    VulkanContext::CmdEndLabel(cmd);
 
     // Update and Render additional Platform Windows
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {

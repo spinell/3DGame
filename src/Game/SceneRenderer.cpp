@@ -88,7 +88,17 @@ SceneRenderer::SceneRenderer() {
     {
         mPerFrameBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(PerFrameData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
         mLightDataBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(LightData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        mMeshPipeline    = VulkanGraphicPipeline::Create(mMeshShader, true, true, true);
+        VulkanGraphicPipelineCreateInfo createInfo{};
+        createInfo.name = "meshPipeline";
+        createInfo.shader = mMeshShader;
+        createInfo.vertexStride = 44;
+        createInfo.vertexInput = {
+            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
+            {1, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 3}, // normal
+            {2, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 6}, // tangent
+            {3, 0, VK_FORMAT_R32G32_SFLOAT, 4 * 9}     // tex
+        };
+        mMeshPipeline    = VulkanGraphicPipeline::Create(createInfo);
         mDescriptorSet   = mDescriptorPool.allocate(mMeshPipeline->getDescriptorSetLayouts()[0]);
 
         VkDescriptorBufferInfo bufferInfo[2];
@@ -120,10 +130,60 @@ SceneRenderer::SceneRenderer() {
         //                                  "VertMeshShader");
         //VulkanContext::setDebugObjectName((uint64_t)mFragMeshShader.shaderModule, VK_OBJECT_TYPE_SHADER_MODULE,
         //                                  "FragMeshShader");
-        VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline->getPipeline(), VK_OBJECT_TYPE_PIPELINE,
-                                          "meshPipeline");
         VulkanContext::setDebugObjectName((uint64_t)mMeshPipeline->getPipelineLayout(),
                                           VK_OBJECT_TYPE_PIPELINE_LAYOUT, "meshpipelineLayout");
+    }
+
+    // Skybox
+    {
+        mSkyboxShader   = VulkanShaderProgram::CreateFromSpirv({"./shaders/skybox_vert.spv", "./shaders/skybox_frag.spv"});
+        VulkanGraphicPipelineCreateInfo createInfo{};
+        createInfo.name = "skybox";
+        createInfo.shader = mSkyboxShader;
+        createInfo.cullMode=VK_CULL_MODE_BACK_BIT;
+        createInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        createInfo.vertexStride = 12;
+        createInfo.vertexInput = {
+            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
+        };
+        mSkyboxPipeline = VulkanGraphicPipeline::Create(createInfo);
+
+        // Define the cube vertices
+        float cubeVertices[] = {
+            -1.0f, -1.0f, -1.0f, // left  - bottom - far	 index 0
+            +0.0f, -1.0f, -1.0f, // right - bottom - far     index 1
+            +0.0f, +1.0f, -1.0f, // right - top    - far     index 2
+            -1.0f, +1.0f, -1.0f, // left  - top    - far     index 3
+            -1.0f, -1.0f, +1.0f, // left  - bottom - near    index 4
+            +1.0f, -1.0f, +1.0f, // right - bottom - near    index 5
+            +1.0f, +1.0f, +1.0f, // right - top    - near    index 6
+            -1.0f, +1.0f, +1.0f  // left  - top    - near    index 7
+        };
+
+        // define the cube indices in ccw order
+        unsigned cubeIndices[] = {
+            0, 1, 2, 2, 3, 0, // far plane
+            2, 1, 5, 5, 6, 2, // right plane
+            3, 7, 4, 4, 0, 3, // left plane
+            6, 5, 4, 4, 7, 6, // near plane
+            7, 3, 2, 2, 6, 7, // top plane
+            0, 4, 5, 5, 1, 0  // bottom plane
+        };
+
+        mSkyBoxVertexBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(cubeVertices), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        VulkanContext::setDebugObjectName((uint64_t)mSkyBoxVertexBuffer.buffer, VK_OBJECT_TYPE_BUFFER, "SkyBoxVB");
+
+        mSkyBoxIndexBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(cubeIndices), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        VulkanContext::setDebugObjectName((uint64_t)mSkyBoxIndexBuffer.buffer, VK_OBJECT_TYPE_BUFFER, "SkyBoxIB");
+
+        void* pData{};
+        vmaMapMemory(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.allocation, &pData);
+        std::memcpy(pData, cubeVertices, sizeof(cubeVertices));
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.allocation);
+
+        vmaMapMemory(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.allocation, &pData);
+        std::memcpy(pData, cubeIndices, sizeof(cubeIndices));
+        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.allocation);
     }
 }
 
@@ -132,8 +192,12 @@ SceneRenderer::~SceneRenderer() {
 
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mPerFrameBuffer.buffer, mPerFrameBuffer.allocation);
     vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mLightDataBuffer.buffer, mLightDataBuffer.allocation);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.buffer, mSkyBoxVertexBuffer.allocation);
+    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.buffer, mSkyBoxIndexBuffer.allocation);
     mMeshPipeline.reset();
+    mSkyboxPipeline.reset();
     mMeshShader.reset();
+    mSkyboxShader.reset();
 }
 
 void SceneRenderer::render(entt::registry*  registry,
@@ -216,6 +280,8 @@ void SceneRenderer::render(entt::registry*  registry,
         vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
     }
 
+
+
     // render scene
     {
         vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
@@ -278,6 +344,53 @@ void SceneRenderer::render(entt::registry*  registry,
                                sizeof(pushData), reinterpret_cast<void*>(&pushData));
 
             Renderer::DrawMesh(cmd, cmesh.mesh);
+        }
+    }
+
+    // skybox
+    {
+        if(auto* skybox = mRegistry->ctx().find<CSkyBox>()) {
+            if(!mSkyBoxDescriptorSet1) {
+                mSkyBoxDescriptorSet0= mDescriptorPool.allocate(mSkyboxShader->getDescriptorSetLayouts()[0]);
+                mSkyBoxDescriptorSet1= mDescriptorPool.allocate(mSkyboxShader->getDescriptorSetLayouts()[1]);
+
+                VkDescriptorBufferInfo bufferInfo[2];
+                bufferInfo[0].buffer = mPerFrameBuffer.buffer;
+                bufferInfo[0].offset = 0;
+                bufferInfo[0].range  = VK_WHOLE_SIZE;
+
+                VkWriteDescriptorSet writeDescriptorSet[1]{};
+                writeDescriptorSet[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writeDescriptorSet[0].dstSet          = mSkyBoxDescriptorSet0;
+                writeDescriptorSet[0].dstBinding      = 0;
+                writeDescriptorSet[0].descriptorCount = 1;
+                writeDescriptorSet[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                writeDescriptorSet[0].pBufferInfo     = bufferInfo;
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet, 0, nullptr);
+
+                VkDescriptorImageInfo descriptorImageInfo;
+                descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                descriptorImageInfo.imageView   = skybox->texture->getImageView();
+                descriptorImageInfo.sampler     = skybox->texture->getSampler();
+
+                VkWriteDescriptorSet writeDescriptorSet2[1]{};
+                writeDescriptorSet2[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                writeDescriptorSet2[0].dstSet          = mSkyBoxDescriptorSet1;
+                writeDescriptorSet2[0].dstBinding      = 0;
+                writeDescriptorSet2[0].descriptorCount = 1;
+                writeDescriptorSet2[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                writeDescriptorSet2[0].pImageInfo      = &descriptorImageInfo;
+                vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, writeDescriptorSet2, 0, nullptr);
+            }
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mSkyboxPipeline->getPipelineLayout(), 0 /*firstSet*/, 1 /*nbSet*/, &mSkyBoxDescriptorSet0, 0, nullptr);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mSkyboxPipeline->getPipelineLayout(), 1 /*firstSet*/, 1 /*nbSet*/, &mSkyBoxDescriptorSet1, 0, nullptr);
+
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mSkyboxPipeline->getPipeline());
+            //Renderer::DrawMesh(cmd, skyBoxMesh);
+            VkDeviceSize offset{};
+            vkCmdBindVertexBuffers(cmd, 0, 1, &mSkyBoxVertexBuffer.buffer, &offset);
+            vkCmdBindIndexBuffer(cmd, mSkyBoxIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(cmd, 36, 1, 0, 0, 1);
         }
     }
 }

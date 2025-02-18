@@ -179,7 +179,8 @@ void transitionImageLayout(VkCommandBuffer          cmdBuffer,
                            VkAccessFlagBits2        srcAccessMask,
                            VkPipelineStageFlagBits2 dstStageMask,
                            VkAccessFlagBits2        dstAccessMask,
-                           uint32_t                 mipmap) noexcept;
+                           uint32_t                 mipmap,
+                           uint32_t                 layerCount = 1) noexcept;
 } // namespace VulkanUtils
 
 #include <vulkan/vk_enum_string_helper.h>

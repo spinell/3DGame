@@ -5,10 +5,8 @@
 
 #include <array>
 
-VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(std::shared_ptr<VulkanShaderProgram> shader,
-                                         bool                                 enableDepthTest,
-                                         bool                                 vertexLayout,
-                                         bool                                 cull) {
+VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(
+    const VulkanGraphicPipelineCreateInfo& createInfo) {
     //============================================================================
     //                            Vertex Input
     //============================================================================
@@ -18,19 +16,13 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(std::shared_ptr<VulkanSha
 
     VkVertexInputBindingDescription   vertexInputBindings[8]{};
     VkVertexInputAttributeDescription vertexInputAttribute[8]{};
-    VkVertexInputBindingDescription   inputBinding = {0, sizeof(float) * 11,
+    VkVertexInputBindingDescription   inputBinding = {0, createInfo.vertexStride,
                                                       VK_VERTEX_INPUT_RATE_VERTEX};
-    VkVertexInputAttributeDescription input[4]     = {
-        {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
-        {1, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 3}, // normal
-        {2, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 6}, // tangent
-        {3, 0, VK_FORMAT_R32G32_SFLOAT, 4 * 9}     // tex
-    };
-    if (vertexLayout) {
+    if (createInfo.vertexInput.size()) {
         vertexInputInfo.vertexBindingDescriptionCount   = 1;
         vertexInputInfo.pVertexBindingDescriptions      = &inputBinding;
-        vertexInputInfo.vertexAttributeDescriptionCount = 4;
-        vertexInputInfo.pVertexAttributeDescriptions    = input;
+        vertexInputInfo.vertexAttributeDescriptionCount = createInfo.vertexInput.size();
+        vertexInputInfo.pVertexAttributeDescriptions    = createInfo.vertexInput.data();
     } else {
         vertexInputInfo.vertexBindingDescriptionCount   = 0;
         vertexInputInfo.pVertexBindingDescriptions      = 0;
@@ -108,20 +100,14 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(std::shared_ptr<VulkanSha
     // =================================================================================
     //                              rasterizer states
     // =================================================================================
-    // const auto&                            rasterizerStates = createInfo.rasterizerStates;
     VkPipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable        = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode             = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth               = 1.0f;
-    if (cull) {
-        rasterizer.cullMode  = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    } else {
-        rasterizer.cullMode  = VK_CULL_MODE_NONE;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    }
+    rasterizer.cullMode                = createInfo.cullMode;
+    rasterizer.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable         = VK_FALSE;
     rasterizer.depthBiasConstantFactor = 0.0f;
     rasterizer.depthBiasClamp          = 0.0f;
@@ -149,11 +135,9 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(std::shared_ptr<VulkanSha
     // ==========================================================================
     VkPipelineDepthStencilStateCreateInfo dsStateCI{};
     dsStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    if (enableDepthTest) {
-        dsStateCI.depthTestEnable  = true;
-        dsStateCI.depthCompareOp   = VK_COMPARE_OP_LESS;
-        dsStateCI.depthWriteEnable = VK_TRUE;
-    }
+    dsStateCI.depthTestEnable  = createInfo.enableDepthTest;
+    dsStateCI.depthCompareOp   = createInfo.depthCompareOp;
+    dsStateCI.depthWriteEnable = VK_TRUE;
 
     // =================================================================================
     //                                Blend states
@@ -188,35 +172,39 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(std::shared_ptr<VulkanSha
     //                      Create the graphic pipeline
     // =================================================================================
     VulkanGraphicPipelinePtr vulkanPipeline = std::make_shared<VulkanGraphicPipeline>();
-    vulkanPipeline->mDescriptorSetLayout = shader->getDescriptorSetLayouts();
-    vulkanPipeline->mPipelineLayout      = shader->getPipelineLayout();
+    vulkanPipeline->mDescriptorSetLayout    = createInfo.shader->getDescriptorSetLayouts();
+    vulkanPipeline->mPipelineLayout         = createInfo.shader->getPipelineLayout();
 
-    VkGraphicsPipelineCreateInfo& createInfo = vulkanPipeline->mCreateInfo;
-    createInfo.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    createInfo.pNext               = &renderingCreateInfo;
-    createInfo.flags               = 0;
-    createInfo.stageCount          = shader->getShaderShages().size();
-    createInfo.pStages             = shader->getShaderShages().data();
-    createInfo.pVertexInputState   = &vertexInputInfo;
-    createInfo.pInputAssemblyState = &inputAssembly;
-    createInfo.pTessellationState  = nullptr;
-    createInfo.pViewportState      = &viewportState;
-    createInfo.pRasterizationState = &rasterizer;
-    createInfo.pMultisampleState   = &multisampling;
-    createInfo.pDepthStencilState  = &dsStateCI;
-    createInfo.pColorBlendState    = &colorBlending;
-    createInfo.pDynamicState       = &dynamicStateCreateInfo;
-    createInfo.layout              = shader->getPipelineLayout();
-    createInfo.renderPass          = VK_NULL_HANDLE;
-    createInfo.subpass             = 0;
-    createInfo.basePipelineHandle  = VK_NULL_HANDLE;
-    createInfo.basePipelineIndex   = 0;
+    VkGraphicsPipelineCreateInfo& vkcreateInfo = vulkanPipeline->mCreateInfo;
+    vkcreateInfo.sType                         = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    vkcreateInfo.pNext                         = &renderingCreateInfo;
+    vkcreateInfo.flags                         = 0;
+    vkcreateInfo.stageCount                    = createInfo.shader->getShaderShages().size();
+    vkcreateInfo.pStages                       = createInfo.shader->getShaderShages().data();
+    vkcreateInfo.pVertexInputState             = &vertexInputInfo;
+    vkcreateInfo.pInputAssemblyState           = &inputAssembly;
+    vkcreateInfo.pTessellationState            = nullptr;
+    vkcreateInfo.pViewportState                = &viewportState;
+    vkcreateInfo.pRasterizationState           = &rasterizer;
+    vkcreateInfo.pMultisampleState             = &multisampling;
+    vkcreateInfo.pDepthStencilState            = &dsStateCI;
+    vkcreateInfo.pColorBlendState              = &colorBlending;
+    vkcreateInfo.pDynamicState                 = &dynamicStateCreateInfo;
+    vkcreateInfo.layout                        = createInfo.shader->getPipelineLayout();
+    vkcreateInfo.renderPass                    = VK_NULL_HANDLE;
+    vkcreateInfo.subpass                       = 0;
+    vkcreateInfo.basePipelineHandle            = VK_NULL_HANDLE;
+    vkcreateInfo.basePipelineIndex             = 0;
 
     assert(vulkanPipeline);
-    VK_CHECK(vkCreateGraphicsPipelines(VulkanContext::getDevice(), VK_NULL_HANDLE, 1, &vulkanPipeline->mCreateInfo,
-                                       nullptr, &vulkanPipeline->mPipeline));
+    VK_CHECK(vkCreateGraphicsPipelines(VulkanContext::getDevice(), VK_NULL_HANDLE, 1,
+                                       &vulkanPipeline->mCreateInfo, nullptr,
+                                       &vulkanPipeline->mPipeline));
+
+    VulkanContext::setDebugObjectName((uint64_t)vulkanPipeline->mPipeline, VK_OBJECT_TYPE_PIPELINE, createInfo.name.c_str());
     return vulkanPipeline;
 }
+
 
 VulkanGraphicPipeline::~VulkanGraphicPipeline() {
     vkDestroyPipeline(VulkanContext::getDevice(), mPipeline, nullptr);

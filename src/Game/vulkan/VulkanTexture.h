@@ -19,6 +19,8 @@ public:
                                    bool                  sRGB           = true,
                                    bool                  generateMipmap = true);
 
+    static VulkanTexturePtr CreateCubeMap(std::filesystem::path path[6], bool sRGB = true);
+
     /// @brief Create a texture from memmery.
     /// @param width  The width of the texture.
     /// @param height The height of the texture.

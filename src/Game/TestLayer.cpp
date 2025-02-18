@@ -55,7 +55,7 @@ void TestLayer1::onAttach() {
     Renderer::Init();
     mSceneRenderer = new SceneRenderer();
 
-    cameraController.setPosition({-2, 2, 2});
+    cameraController.setPosition({0, 4, 0});
 
     // generate mipmap for normal and specular map ?
     gTextureCache["ab_crate_a"]        = VulkanTexture::Create("./data/ab_crate_a.png", true, true);
@@ -70,6 +70,17 @@ void TestLayer1::onAttach() {
     gTextureCache["FloorSandStone"]    = VulkanTexture::Create("./data/FloorDiffuse.png", true, true); // FloorAmbientOcclusion
     gTextureCache["FloorSandStone_nm"] = VulkanTexture::Create("./data/FloorNormal.png", false, true);
     gTextureCache["FloorSandStone_sm"] = VulkanTexture::Create("./data/FloorSpacular.png", false, true);
+
+    std::filesystem::path cubeMapPaths[6] = {
+        "./data/skybox/sleepyhollow_ft.jpg", // right +z
+        "./data/skybox/sleepyhollow_bk.jpg", // left  -x
+        "./data/skybox/sleepyhollow_up.jpg", // up    +y
+        "./data/skybox/sleepyhollow_dn.jpg", // down  -y
+        "./data/skybox/sleepyhollow_rt.jpg", // right  +x
+        "./data/skybox/sleepyhollow_lf.jpg", // left   -x
+    };
+
+    gTextureCache["SkyBox"] = VulkanTexture::CreateCubeMap(cubeMapPaths, true);
     gTextureCache["WhiteTexture"] = VulkanTexture::CreateWhiteTexture();
     gTextureCache["BlackTexture"] = VulkanTexture::CreateBlackTexture();
     gTextureCache["CheckBoard"]   = VulkanTexture::CreateCheckBoard();
@@ -84,6 +95,8 @@ void TestLayer1::onAttach() {
     meshs.push_back(meshCylinder);
     meshs.push_back(meshSphere);
     meshs.push_back(meshGeoSphere);
+
+    mRegistry.ctx().emplace<CSkyBox>().texture = gTextureCache["SkyBox"];
 
     // floor
     {
@@ -365,7 +378,11 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     }
 
     fullScreenShader   = VulkanShaderProgram::CreateFromSpirv({"./shaders/fullscreen_vert.spv", "./shaders/fullscreen_frag.spv"});
-    pipelineFullScreen = VulkanGraphicPipeline::Create(fullScreenShader);
+    VulkanGraphicPipelineCreateInfo createInfo{};
+    createInfo.shader = fullScreenShader;
+    createInfo.enableDepthTest = false;
+    createInfo.cullMode = VK_CULL_MODE_NONE;
+    pipelineFullScreen = VulkanGraphicPipeline::Create(createInfo);
 
     depthBuffer = VulkanContext::createTexture(
         vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
@@ -377,6 +394,7 @@ void TestLayer1::onDetach() {
     // All component which hold shared ptr on vulkan ressource
     // will be released.
     mRegistry.clear();
+    mRegistry.ctx().erase<CSkyBox>();
 
     vkDeviceWaitIdle(VulkanContext::getDevice());
 
@@ -529,9 +547,7 @@ void TestLayer1::onUpdate(float timeStep) {
 
 
     VulkanImGuiRenderer::BeingFrame();
-    VulkanContext::CmdBeginsLabel(frameData.commandBuffer, "ImGUI");
     onImGuiRender();
-    VulkanContext::CmdEndLabel(frameData.commandBuffer);
     VulkanImGuiRenderer::EndFrame(frameData.commandBuffer);
 
     // end render pass

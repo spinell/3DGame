@@ -54,6 +54,10 @@ struct CSpotLight {
     float     cutOffAngle; // degrees
 };
 
+struct CSkyBox {
+    VulkanTexturePtr texture;
+};
+
 class SceneRenderer {
 public:
     SceneRenderer();
@@ -96,7 +100,14 @@ private:
     Buffer                               mPerFrameBuffer;
     Buffer                               mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram> mMeshShader;
+    std::shared_ptr<VulkanShaderProgram> mSkyboxShader;
     VulkanGraphicPipelinePtr             mMeshPipeline;
+    VulkanGraphicPipelinePtr             mSkyboxPipeline;
     VulkanDescriptorPool                 mDescriptorPool;
     VkDescriptorSet                      mDescriptorSet;
+
+    Buffer mSkyBoxVertexBuffer{};
+    Buffer mSkyBoxIndexBuffer{};
+    VkDescriptorSet mSkyBoxDescriptorSet0 {};
+    VkDescriptorSet mSkyBoxDescriptorSet1 {};
 };
