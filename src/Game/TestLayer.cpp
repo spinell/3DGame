@@ -39,7 +39,7 @@ std::shared_ptr<VulkanShaderProgram> fullScreenShader;
 VulkanGraphicPipelinePtr  pipelineFullScreen;
 
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
-Texture depthBuffer;
+VulkanTexturePtr depthBuffer;
 Engine::CameraController cameraController;
 std::vector<Mesh>        meshs;
 std::map<std::string,VulkanTexturePtr> gTextureCache;
@@ -384,9 +384,10 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     createInfo.cullMode = VK_CULL_MODE_NONE;
     pipelineFullScreen = VulkanGraphicPipeline::Create(createInfo);
 
-    depthBuffer = VulkanContext::createTexture(
-        vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
-        VK_FORMAT_D24_UNORM_S8_UINT, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    depthBuffer = VulkanTexture::CreateDepthBuffer(vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height);
+    //depthBuffer = VulkanContext::createTexture(
+    //    vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
+    //    VK_FORMAT_D24_UNORM_S8_UINT, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 void TestLayer1::onDetach() {
@@ -412,9 +413,7 @@ void TestLayer1::onDetach() {
     delete mSceneRenderer;
     vkDestroyCommandPool(VulkanContext::getDevice(), frameData.commandPool, nullptr);
 
-    vmaDestroyImage(VulkanContext::getVmaAllocator(), depthBuffer.image, depthBuffer.allocation);
-    vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
-    vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
+    depthBuffer.reset();
 
     fullScreenShader.reset();
     pipelineFullScreen.reset();
@@ -485,7 +484,7 @@ void TestLayer1::onUpdate(float timeStep) {
         VkRenderingAttachmentInfo depthAttachmentInfo{};
         depthAttachmentInfo.sType              = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
         depthAttachmentInfo.pNext              = 0;
-        depthAttachmentInfo.imageView          = depthBuffer.view;
+        depthAttachmentInfo.imageView          = depthBuffer->getImageView();
         depthAttachmentInfo.imageLayout        = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         depthAttachmentInfo.resolveMode        = VK_RESOLVE_MODE_NONE;
         depthAttachmentInfo.resolveImageView   = nullptr;
@@ -690,16 +689,10 @@ bool TestLayer1::onEvent(const Engine::Event& event) {
     cameraController.onEvent(event);
 
     event.dispatch<Engine::WindowResizedEvent>([this](const auto& e) {
-        vkDeviceWaitIdle(VulkanContext::getDevice());
-
-        vulkanSwapchain->build();
         // rebuild depth buffer.
-        vkDestroyImageView(VulkanContext::getDevice(), depthBuffer.view, nullptr);
-        vkDestroySampler(VulkanContext::getDevice(), depthBuffer.sampler, nullptr);
-
-        depthBuffer = VulkanContext::createTexture(
-            vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height,
-            VK_FORMAT_D24_UNORM_S8_UINT, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        vkDeviceWaitIdle(VulkanContext::getDevice());
+        vulkanSwapchain->build();
+        depthBuffer = VulkanTexture::CreateDepthBuffer(vulkanSwapchain->getSize().width, vulkanSwapchain->getSize().height);
     });
     event.dispatch<Engine::KeyEvent>([this](const Engine::KeyEvent& e) {
         if (e.isPressed()) {

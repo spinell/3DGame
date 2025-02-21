@@ -19,14 +19,6 @@ struct Buffer {
     VmaAllocation allocation{VK_NULL_HANDLE};
     uint64_t      sizeInByte{0};
 };
-struct Texture {
-    VkImage       image{VK_NULL_HANDLE};
-    VkImageView   view{VK_NULL_HANDLE};
-    VmaAllocation allocation{VK_NULL_HANDLE};
-    VkSampler     sampler{VK_NULL_HANDLE};
-    uint32_t      width;
-    uint32_t      height;
-};
 
 namespace VulkanContext {
 
@@ -59,11 +51,6 @@ void                          copyBufferToImage(
 [[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
                                    uint64_t              sizeInByte,
                                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
-[[nodiscard]] Texture createTexture(uint32_t          width,
-                                    uint32_t          height,
-                                    VkFormat          format,
-                                    uint32_t          mipLevels,
-                                    VkImageUsageFlags usageFlags) noexcept;
 
 // Debugging
 void CmdBeginsLabel(VkCommandBuffer cmd, std::string_view label);
