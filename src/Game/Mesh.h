@@ -1,9 +1,9 @@
 #pragma once
-#include "Vulkan/VulkanContext.h"
+#include "Vulkan/VulkanBuffer.h"
 
 struct Mesh {
-    Buffer   vertexBuffer;
-    Buffer   indexBuffer;
+    VulkanBufferPtr   vertexBuffer;
+    VulkanBufferPtr   indexBuffer;
     uint32_t indexCount;
 
     /// @brief

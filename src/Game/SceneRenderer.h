@@ -1,6 +1,7 @@
 #pragma once
 #include "Mesh.h"
 
+#include "vulkan/VulkanBuffer.h"
 #include "vulkan/VulkanDescriptorPool.h"
 #include "vulkan/VulkanTexture.h"
 #include "vulkan/VulkanGraphicPipeline.h"
@@ -97,8 +98,8 @@ private:
     bool                                 mUseGammaCorrection = true;
     float                                mGamma              = 2.2f;
     glm::vec3                            mAmbientLight       = {0.01f, 0.01f, 0.01f};
-    Buffer                               mPerFrameBuffer;
-    Buffer                               mLightDataBuffer;
+    VulkanBufferPtr                      mPerFrameBuffer;
+    VulkanBufferPtr                      mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram> mMeshShader;
     std::shared_ptr<VulkanShaderProgram> mSkyboxShader;
     VulkanGraphicPipelinePtr             mMeshPipeline;
@@ -106,8 +107,8 @@ private:
     VulkanDescriptorPool                 mDescriptorPool;
     VkDescriptorSet                      mDescriptorSet;
 
-    Buffer mSkyBoxVertexBuffer{};
-    Buffer mSkyBoxIndexBuffer{};
+    VulkanBufferPtr mSkyBoxVertexBuffer{};
+    VulkanBufferPtr mSkyBoxIndexBuffer{};
     VkDescriptorSet mSkyBoxDescriptorSet0 {};
     VkDescriptorSet mSkyBoxDescriptorSet1 {};
 };

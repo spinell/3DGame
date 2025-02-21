@@ -86,8 +86,19 @@ SceneRenderer::SceneRenderer() {
 
     // Mesh pipeline
     {
-        mPerFrameBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(PerFrameData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        mLightDataBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(LightData), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        VulkanBufferCreateInfo bufferCreateInfo{};
+        bufferCreateInfo.name           = "PerFrameData";
+        bufferCreateInfo.sizeInByte     = sizeof(PerFrameData);
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mPerFrameBuffer                 = VulkanBuffer::Create(bufferCreateInfo);
+
+        bufferCreateInfo.name           = "LightData";
+        bufferCreateInfo.sizeInByte     = sizeof(LightData);
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mLightDataBuffer                = VulkanBuffer::Create(bufferCreateInfo);
+
         VulkanGraphicPipelineCreateInfo createInfo{};
         createInfo.name = "meshPipeline";
         createInfo.shader = mMeshShader;
@@ -102,10 +113,10 @@ SceneRenderer::SceneRenderer() {
         mDescriptorSet   = mDescriptorPool.allocate(mMeshPipeline->getDescriptorSetLayouts()[0]);
 
         VkDescriptorBufferInfo bufferInfo[2];
-        bufferInfo[0].buffer = mPerFrameBuffer.buffer;
+        bufferInfo[0].buffer = mPerFrameBuffer->getBuffer();
         bufferInfo[0].offset = 0;
         bufferInfo[0].range  = VK_WHOLE_SIZE;
-        bufferInfo[1].buffer = mLightDataBuffer.buffer;
+        bufferInfo[1].buffer = mLightDataBuffer->getBuffer();
         bufferInfo[1].offset = 0;
         bufferInfo[1].range  = VK_WHOLE_SIZE;
 
@@ -149,7 +160,7 @@ SceneRenderer::SceneRenderer() {
         mSkyboxPipeline = VulkanGraphicPipeline::Create(createInfo);
 
         // Define the cube vertices
-        float cubeVertices[] = {
+        const float cubeVertices[] = {
             -1.0f, -1.0f, -1.0f, // left  - bottom - far	 index 0
             +0.0f, -1.0f, -1.0f, // right - bottom - far     index 1
             +0.0f, +1.0f, -1.0f, // right - top    - far     index 2
@@ -161,7 +172,7 @@ SceneRenderer::SceneRenderer() {
         };
 
         // define the cube indices in ccw order
-        unsigned cubeIndices[] = {
+        const unsigned cubeIndices[] = {
             0, 1, 2, 2, 3, 0, // far plane
             2, 1, 5, 5, 6, 2, // right plane
             3, 7, 4, 4, 0, 3, // left plane
@@ -170,30 +181,31 @@ SceneRenderer::SceneRenderer() {
             0, 4, 5, 5, 1, 0  // bottom plane
         };
 
-        mSkyBoxVertexBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, sizeof(cubeVertices), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        VulkanContext::setDebugObjectName((uint64_t)mSkyBoxVertexBuffer.buffer, VK_OBJECT_TYPE_BUFFER, "SkyBoxVB");
+        VulkanBufferCreateInfo bufferCreateInfo{};
+        bufferCreateInfo.name           = "SkyBoxVB";
+        bufferCreateInfo.sizeInByte     = sizeof(cubeVertices);
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mSkyBoxVertexBuffer = VulkanBuffer::Create(bufferCreateInfo);
 
-        mSkyBoxIndexBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, sizeof(cubeIndices), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        VulkanContext::setDebugObjectName((uint64_t)mSkyBoxIndexBuffer.buffer, VK_OBJECT_TYPE_BUFFER, "SkyBoxIB");
+        bufferCreateInfo.name           = "SkyBoxIB";
+        bufferCreateInfo.sizeInByte     = sizeof(cubeIndices);
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mSkyBoxIndexBuffer = VulkanBuffer::Create(bufferCreateInfo);
 
-        void* pData{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.allocation, &pData);
-        std::memcpy(pData, cubeVertices, sizeof(cubeVertices));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.allocation);
-
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.allocation, &pData);
-        std::memcpy(pData, cubeIndices, sizeof(cubeIndices));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.allocation);
+        mSkyBoxVertexBuffer->writeData(cubeVertices, sizeof(cubeVertices));
+        mSkyBoxIndexBuffer->writeData(cubeIndices, sizeof(cubeIndices));
     }
 }
 
 SceneRenderer::~SceneRenderer() {
     mDescriptorPool.destroy();
 
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mPerFrameBuffer.buffer, mPerFrameBuffer.allocation);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mLightDataBuffer.buffer, mLightDataBuffer.allocation);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mSkyBoxVertexBuffer.buffer, mSkyBoxVertexBuffer.allocation);
-    vmaDestroyBuffer(VulkanContext::getVmaAllocator(), mSkyBoxIndexBuffer.buffer, mSkyBoxIndexBuffer.allocation);
+    mPerFrameBuffer.reset();
+    mLightDataBuffer.reset();
+    mSkyBoxVertexBuffer.reset();
+    mSkyBoxIndexBuffer.reset();
     mMeshPipeline.reset();
     mSkyboxPipeline.reset();
     mMeshShader.reset();
@@ -217,11 +229,7 @@ void SceneRenderer::render(entt::registry*  registry,
         perFrameData.useBlinnPhong = mUseBlinnPhong;
         perFrameData.useGammaCorrection = mUseGammaCorrection;
         perFrameData.gamma = mGamma;
-
-        void* pData{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mPerFrameBuffer.allocation, &pData);
-        std::memcpy(pData, &perFrameData, sizeof(perFrameData));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mPerFrameBuffer.allocation);
+        mPerFrameBuffer->writeData(&perFrameData, sizeof(perFrameData));
     }
 
     //
@@ -274,10 +282,7 @@ void SceneRenderer::render(entt::registry*  registry,
             lightData.nbSpotLight++;
         }
 
-        void* pData{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation, &pData);
-        std::memcpy(pData, &lightData, sizeof(lightData));
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mLightDataBuffer.allocation);
+        mLightDataBuffer->writeData(&lightData,sizeof(lightData));
     }
 
 
@@ -355,7 +360,7 @@ void SceneRenderer::render(entt::registry*  registry,
                 mSkyBoxDescriptorSet1= mDescriptorPool.allocate(mSkyboxShader->getDescriptorSetLayouts()[1]);
 
                 VkDescriptorBufferInfo bufferInfo[2];
-                bufferInfo[0].buffer = mPerFrameBuffer.buffer;
+                bufferInfo[0].buffer = mPerFrameBuffer->getBuffer();
                 bufferInfo[0].offset = 0;
                 bufferInfo[0].range  = VK_WHOLE_SIZE;
 
@@ -388,8 +393,9 @@ void SceneRenderer::render(entt::registry*  registry,
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mSkyboxPipeline->getPipeline());
             //Renderer::DrawMesh(cmd, skyBoxMesh);
             VkDeviceSize offset{};
-            vkCmdBindVertexBuffers(cmd, 0, 1, &mSkyBoxVertexBuffer.buffer, &offset);
-            vkCmdBindIndexBuffer(cmd, mSkyBoxIndexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+            VkBuffer buffer = mSkyBoxVertexBuffer->getBuffer();
+            vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &offset);
+            vkCmdBindIndexBuffer(cmd, mSkyBoxIndexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(cmd, 36, 1, 0, 0, 1);
         }
     }

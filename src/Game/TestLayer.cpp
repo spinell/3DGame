@@ -401,12 +401,7 @@ void TestLayer1::onDetach() {
 
     VulkanImGuiRenderer::Shutdown();
 
-    for (auto& m : meshs) {
-        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), m.vertexBuffer.buffer,
-                         m.vertexBuffer.allocation);
-        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), m.indexBuffer.buffer,
-                         m.indexBuffer.allocation);
-    }
+    meshs.clear();
 
     gTextureCache.clear();
 

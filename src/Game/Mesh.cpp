@@ -9,20 +9,19 @@ namespace {
 
 
         mesh.indexCount   = meshData.Indices.size();
-        mesh.vertexBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexSize,
-                                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-        mesh.indexBuffer  = VulkanContext::createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexSize,
-                                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        VulkanBufferCreateInfo bufferCreateInfo{};
+        bufferCreateInfo.sizeInByte     = vertexSize;
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mesh.vertexBuffer = VulkanBuffer::Create(bufferCreateInfo);
 
-        void* pData{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mesh.vertexBuffer.allocation, &pData);
-        std::memcpy(pData, meshData.Vertices.data(), vertexSize);
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mesh.vertexBuffer.allocation);
+        bufferCreateInfo.sizeInByte     = indexSize;
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mesh.indexBuffer  = VulkanBuffer::Create(bufferCreateInfo);
 
-        // upload index data
-        vmaMapMemory(VulkanContext::getVmaAllocator(), mesh.indexBuffer.allocation, &pData);
-        std::memcpy(pData, meshData.Indices.data(), indexSize);
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), mesh.indexBuffer.allocation);
+        mesh.vertexBuffer->writeData(meshData.Vertices.data(), vertexSize);
+        mesh.indexBuffer->writeData(meshData.Indices.data(), indexSize);
     }
 };
 

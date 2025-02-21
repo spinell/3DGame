@@ -520,48 +520,6 @@ VkCommandPool createCommandPool(uint32_t queueFamilyIndex, bool transient, bool 
     return commandPool;
 }
 
-Buffer createBuffer(VkBufferUsageFlags    usageFlags,
-                    uint64_t              sizeInByte,
-                    VkMemoryPropertyFlags memoryPropertyFlags) noexcept {
-    Buffer buffer{};
-    buffer.sizeInByte = sizeInByte;
-
-    VkBufferCreateInfo bufferCreateInfo{};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.pNext = nullptr;
-    bufferCreateInfo.flags = 0;
-    bufferCreateInfo.size  = sizeInByte;
-    bufferCreateInfo.usage = usageFlags;
-
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.flags                   = 0;
-    allocInfo.usage                   = VMA_MEMORY_USAGE_UNKNOWN;
-    allocInfo.requiredFlags           = memoryPropertyFlags;
-    allocInfo.preferredFlags          = 0;
-    allocInfo.memoryTypeBits          = 0;
-    allocInfo.pool                    = nullptr;
-    allocInfo.pUserData               = nullptr;
-    allocInfo.priority                = 0;
-    VK_CHECK(vmaCreateBuffer(sVmaAllocator, &bufferCreateInfo, &allocInfo, &buffer.buffer,
-                             &buffer.allocation, nullptr /*allocationInfo*/
-                             ));
-
-#if 0
-    if (createInfo.debugName) {
-        setDebugObjectName(mDevice, (uint64_t)internalBuffer->buffer,
-                           VK_OBJECT_TYPE_BUFFER, createInfo.debugName);
-    }
-
-    if (createInfo.initialData) {
-        void* pData{};
-        vmaMapMemory(mVmaAllocator, internalBuffer->allocation, &pData);
-        std::memcpy(pData, createInfo.initialData, createInfo.sizeInByte);
-        vmaUnmapMemory(mVmaAllocator, internalBuffer->allocation);
-    }
-#endif
-    return buffer;
-}
-
 void setDebugObjectName(uint64_t     objectHandle,
                         VkObjectType objectType,
                         std::string  name) {

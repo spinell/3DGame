@@ -14,12 +14,6 @@ struct Shader {
     std::map<uint32_t, std::map<uint32_t, VkDescriptorSetLayoutBinding>> descriptorSetLayoutBinding;
 };
 
-struct Buffer {
-    VkBuffer      buffer{VK_NULL_HANDLE};
-    VmaAllocation allocation{VK_NULL_HANDLE};
-    uint64_t      sizeInByte{0};
-};
-
 namespace VulkanContext {
 
 bool Initialize();
@@ -47,10 +41,6 @@ void                          copyBufferToImage(
                                                     uint32_t               rangeCount,
                                                     VkPushConstantRange*   ranges);
 [[nodiscard]] VkPipelineLayout createPipelineLayout(Shader vert, Shader frag);
-
-[[nodiscard]] Buffer  createBuffer(VkBufferUsageFlags    usageFlags,
-                                   uint64_t              sizeInByte,
-                                   VkMemoryPropertyFlags memoryPropertyFlags) noexcept;
 
 // Debugging
 void CmdBeginsLabel(VkCommandBuffer cmd, std::string_view label);

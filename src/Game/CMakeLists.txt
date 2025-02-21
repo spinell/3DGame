@@ -30,6 +30,8 @@ add_executable(Game
     Renderer.cpp
     SceneRenderer.h
     SceneRenderer.cpp
+    vulkan/VulkanBuffer.cpp
+    vulkan/VulkanBuffer.h
     vulkan/VulkanGraphicPipeline.h
     vulkan/VulkanGraphicPipeline.cpp
     vulkan/VulkanTexture.h

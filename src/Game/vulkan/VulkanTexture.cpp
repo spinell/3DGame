@@ -1,5 +1,6 @@
 #include "VulkanTexture.h"
 
+#include "VulkanBuffer.h"
 #include "VulkanContext.h"
 #include "VulkanUtils.h"
 
@@ -116,18 +117,9 @@ VulkanTexturePtr VulkanTexture::Create(std::filesystem::path path, bool sRGB, bo
         //
         // create staging buffer
         //
-        VkDeviceSize imageSize     = width * height * 4;
-        auto         stagingBuffer = VulkanContext::createBuffer(
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        //
-        // Copy data into staging buffer
-        //
-        void* ptr{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
-        std::memcpy(ptr, data, imageSize);
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
+        VkDeviceSize       imageSize = width * height * 4;
+        auto stagingBuffer = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
+        stagingBuffer->writeData(data, imageSize);
 
         stbi_image_free(data);
 
@@ -141,7 +133,7 @@ VulkanTexturePtr VulkanTexture::Create(std::filesystem::path path, bool sRGB, bo
             VK_PIPELINE_STAGE_2_NONE_KHR, VK_ACCESS_2_NONE_KHR, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
             VK_ACCESS_2_TRANSFER_WRITE_BIT, mipLevels);
 
-        VulkanContext::copyBufferToImage(cmd, stagingBuffer.buffer, texture->mImage,
+        VulkanContext::copyBufferToImage(cmd, stagingBuffer->getBuffer(), texture->mImage,
                                          texture->mWidth, texture->mHeight);
 
         // Generate mipmap
@@ -221,8 +213,6 @@ VulkanTexturePtr VulkanTexture::Create(std::filesystem::path path, bool sRGB, bo
 
         VulkanContext::endSingleTimeCommands(cmd);
 
-        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
-                         stagingBuffer.allocation);
         return texture;
     }
 
@@ -277,22 +267,13 @@ VulkanTexturePtr VulkanTexture::CreateCubeMap(std::filesystem::path paths[6], bo
                                            VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                            VK_ACCESS_2_TRANSFER_WRITE_BIT, 1, 6);
 
-        Buffer stagingBuffer[6];
+        VulkanBufferPtr stagingBuffers[6];
+        const VkDeviceSize imageSize = width * height * 4;
         for (unsigned i = 0; i < 6; i++) {
-            VkDeviceSize imageSize = width * height * 4;
-            stagingBuffer[i]       = VulkanContext::createBuffer(
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, imageSize,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            stagingBuffers[i] = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
+            stagingBuffers[i]->writeData(data[i], imageSize);
 
-            //
-            // Copy data into staging buffer
-            //
-            void* ptr{};
-            vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer[i].allocation, &ptr);
-            std::memcpy(ptr, data[i], imageSize);
-            vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer[i].allocation);
-
-            copyBufferToImage2(cmd, stagingBuffer[i].buffer, vulkanTexture->mImage, width, height,
+            copyBufferToImage2(cmd, stagingBuffers[i]->getBuffer(), vulkanTexture->mImage, width, height,
                                i);
         }
 
@@ -303,12 +284,6 @@ VulkanTexturePtr VulkanTexture::CreateCubeMap(std::filesystem::path paths[6], bo
             VK_ACCESS_2_SHADER_READ_BIT, 1, 6);
 
         VulkanContext::endSingleTimeCommands(cmd);
-
-        /// delete staging buffer .....
-        for (unsigned i = 0; i < 6; i++) {
-            vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer[i].buffer,
-                             stagingBuffer[i].allocation);
-        }
 
         VkSamplerCreateInfo samplerCreateInfo{};
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -356,32 +331,17 @@ VulkanTexturePtr VulkanTexture::Create(const VulkanTexture2DCreateInfo& createIn
         //
         // create staging buffer
         //
-        const VkDeviceSize imageSize =
-            createInfo.width * createInfo.height * 4; // FIXME: Assume RGBA format.
-        const VkMemoryPropertyFlags memoryPropertyFlags =
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        auto stagingBuffer = VulkanContext::createBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                         imageSize, memoryPropertyFlags);
-
-        //
-        // Copy pixels into staging buffer
-        //
-        void* ptr{};
-        vmaMapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation, &ptr);
-        std::memcpy(ptr, data, imageSize);
-        vmaUnmapMemory(VulkanContext::getVmaAllocator(), stagingBuffer.allocation);
+        const VkDeviceSize imageSize = createInfo.width * createInfo.height * 4; // FIXME: Assume RGBA format.
+        auto stagingBuffer = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
+        stagingBuffer->writeData(data, imageSize);
 
         //
         // Copy staging buffer into the image
         //
         VkCommandBuffer cmd = VulkanContext::beginSingleTimeCommands();
-        copyBufferToImage(cmd, stagingBuffer.buffer, texture->mImage, texture->mWidth,
+        copyBufferToImage(cmd, stagingBuffer->getBuffer(), texture->mImage, texture->mWidth,
                           texture->mHeight);
         VulkanContext::endSingleTimeCommands(cmd);
-
-        // delete staging buffer
-        vmaDestroyBuffer(VulkanContext::getVmaAllocator(), stagingBuffer.buffer,
-                         stagingBuffer.allocation);
     }
 
     return texture;
