@@ -111,4 +111,10 @@ private:
     VulkanBufferPtr mSkyBoxIndexBuffer{};
     VkDescriptorSet mSkyBoxDescriptorSet0 {};
     VkDescriptorSet mSkyBoxDescriptorSet1 {};
+
+    struct {
+        std::shared_ptr<VulkanShaderProgram> shader;
+        VulkanGraphicPipelinePtr             pipeline;
+        VkDescriptorSet                      descriptorSet;
+    } mDrawMeshAABB;
 };

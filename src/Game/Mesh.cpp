@@ -38,6 +38,8 @@ Mesh Mesh::CreateMeshCube(float width, float height, float depth) {
     uploadData(meshData, mesh);
     VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshCube");
     VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshCube");
+    mesh.aabbMin = { -width/2, -height/2, -depth/2, };
+    mesh.aabbMax = {  width/2,  height/2,  depth/2, };
     return mesh;
 }
 
@@ -54,6 +56,8 @@ Mesh Mesh::CreateGrid(float        width,
     uploadData(meshData, mesh);
     VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshGrid");
     VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshGrid");
+    mesh.aabbMin = { -width/2, 0, -depth/2, };
+    mesh.aabbMax = {  width/2, 0,  depth/2, };
     return mesh;
 }
 
@@ -67,6 +71,8 @@ Mesh Mesh::CreateGeoSphere(float radius, unsigned int subdivisionCount) {
     uploadData(meshData, mesh);
     VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "GeoSphereGrid");
     VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "GeoSphereGrid");
+    mesh.aabbMin = { -radius, -radius, -radius, };
+    mesh.aabbMax = {  radius,  radius,  radius, };
     return mesh;
 }
 
@@ -84,6 +90,9 @@ Mesh Mesh::CreateCylinder(float        bottomRadius,
     uploadData(meshData, mesh);
     VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "CylinderMesh");
     VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "CylinderMesh");
+    const auto maxRadius = std::max(bottomRadius, topRadius);
+    mesh.aabbMin = { -maxRadius, -height/2, -maxRadius, };
+    mesh.aabbMax = {  maxRadius,  height/2,  maxRadius, };
     return mesh;
 }
 
@@ -97,5 +106,7 @@ Mesh Mesh::CreateSphere(float radius, unsigned int sliceCount, unsigned int stac
     uploadData(meshData, mesh);
     VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "SphereMesh");
     VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "SphereMesh");
+    mesh.aabbMin = { -radius, -radius, -radius, };
+    mesh.aabbMax = {  radius,  radius,  radius, };
     return mesh;
 }

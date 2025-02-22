@@ -12,6 +12,7 @@ using VulkanGraphicPipelinePtr = std::shared_ptr<VulkanGraphicPipeline>;
 struct VulkanGraphicPipelineCreateInfo {
     std::string name;
     std::shared_ptr<VulkanShaderProgram> shader;
+    VkPrimitiveTopology primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
     bool            enableDepthTest = true;
     VkCompareOp     depthCompareOp  = VK_COMPARE_OP_LESS;

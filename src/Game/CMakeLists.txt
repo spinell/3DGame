@@ -89,6 +89,7 @@ target_compile_definitions(Game
 target_sources(Game
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh.slang
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_aabb.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang
 )
@@ -125,6 +126,20 @@ add_custom_command(
     VERBATIM
     USES_TERMINAL
 )
+
+add_custom_command(
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_vert.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_geo.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_frag.spv
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_aabb.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_vert.spv -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_aabb.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_geo.spv  -entry gs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_aabb.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/mesh_aabb_frag.spv -entry ps_main
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_aabb.slang
+    VERBATIM
+    USES_TERMINAL
+)
+
 
 #
 # Add shaders

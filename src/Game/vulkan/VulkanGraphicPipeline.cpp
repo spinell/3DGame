@@ -36,7 +36,7 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.primitiveRestartEnable = VK_FALSE; // VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE
-    inputAssembly.topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.topology               = createInfo.primitiveTopology;
 
     //============================================================================
     //                           Dynamic States
@@ -64,7 +64,7 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(
         // =======================================================
         // VK_DYNAMIC_STATE_CULL_MODE,
         // VK_DYNAMIC_STATE_FRONT_FACE,
-        VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
+        //VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY,
         // specifies that the viewportCount and pViewports state in
         // VkPipelineViewportStateCreateInfo will be ignored and must
         // be set dynamically with vkCmdSetViewportWithCount before any

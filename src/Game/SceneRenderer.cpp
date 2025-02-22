@@ -79,6 +79,7 @@ SceneRenderer::SceneRenderer() {
      mDescriptorPool.init();
 
     mMeshShader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_vert.spv", "./shaders/mesh_frag.spv"});
+    VulkanContext::setDebugObjectName((uint64_t)mMeshShader->getPipelineLayout(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, "MeshPipelineLayout" );
     bool a = mMeshShader->hasShaderStage(VK_SHADER_STAGE_VERTEX_BIT);
     bool b = mMeshShader->hasShaderStage(VK_SHADER_STAGE_FRAGMENT_BIT);
     bool c = mMeshShader->hasPushConstant();
@@ -102,6 +103,7 @@ SceneRenderer::SceneRenderer() {
         VulkanGraphicPipelineCreateInfo createInfo{};
         createInfo.name = "meshPipeline";
         createInfo.shader = mMeshShader;
+        createInfo.cullMode = VK_CULL_MODE_NONE;
         createInfo.vertexStride = 44;
         createInfo.vertexInput = {
             {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
@@ -148,6 +150,7 @@ SceneRenderer::SceneRenderer() {
     // Skybox
     {
         mSkyboxShader   = VulkanShaderProgram::CreateFromSpirv({"./shaders/skybox_vert.spv", "./shaders/skybox_frag.spv"});
+        VulkanContext::setDebugObjectName((uint64_t)mSkyboxShader->getPipelineLayout(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, "SkyboxPipelineLayout" );
         VulkanGraphicPipelineCreateInfo createInfo{};
         createInfo.name = "skybox";
         createInfo.shader = mSkyboxShader;
@@ -196,6 +199,38 @@ SceneRenderer::SceneRenderer() {
 
         mSkyBoxVertexBuffer->writeData(cubeVertices, sizeof(cubeVertices));
         mSkyBoxIndexBuffer->writeData(cubeIndices, sizeof(cubeIndices));
+    }
+
+    // Draw mesh AABB
+    {
+        mDrawMeshAABB.shader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_aabb_vert.spv", "./shaders/mesh_aabb_geo.spv", "./shaders/mesh_aabb_frag.spv"});
+        VulkanContext::setDebugObjectName((uint64_t)mDrawMeshAABB.shader->getPipelineLayout(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, "MeshAABBPipelineLayout" );
+        assert(mDrawMeshAABB.shader);
+
+        VulkanGraphicPipelineCreateInfo createInfo{};
+        createInfo.name = "MeshAABB";
+        createInfo.shader = mDrawMeshAABB.shader;
+        createInfo.primitiveTopology =VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        createInfo.cullMode=VK_CULL_MODE_NONE;
+        mDrawMeshAABB.pipeline = VulkanGraphicPipeline::Create(createInfo);
+        assert(mDrawMeshAABB.pipeline);
+
+        mDrawMeshAABB.descriptorSet = mDescriptorPool.allocate(mDrawMeshAABB.pipeline->getDescriptorSetLayouts()[0]);
+        VulkanContext::setDebugObjectName((uint64_t)mDrawMeshAABB.descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "MeshAABB" );
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = mPerFrameBuffer->getBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range  = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet writeDescriptorSet{};
+        writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet.dstSet          = mDrawMeshAABB.descriptorSet;
+        writeDescriptorSet.dstBinding      = 0;
+        writeDescriptorSet.descriptorCount = 1;
+        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet.pBufferInfo     = &bufferInfo;
+        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
     }
 }
 
@@ -397,6 +432,68 @@ void SceneRenderer::render(entt::registry*  registry,
             vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &offset);
             vkCmdBindIndexBuffer(cmd, mSkyBoxIndexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
             vkCmdDrawIndexed(cmd, 36, 1, 0, 0, 1);
+        }
+    }
+
+    // Render Mesh AABB
+    {
+        vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mDrawMeshAABB.pipeline->getPipeline());
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            mDrawMeshAABB.pipeline->getPipelineLayout(),
+            0 /*firstSet*/,
+            1 /*nbSet*/,
+            &mDrawMeshAABB.descriptorSet,
+            0,
+            nullptr
+        );
+
+        struct {
+            glm::mat4 transform;
+            glm::vec3 min;
+            float _pad0;
+            glm::vec3 max;
+            float _pad1;
+            glm::vec3 color;
+        }aabb;
+        auto view           = mRegistry->view<CTransform, CMesh>();
+        for (auto [entity, ctrans, cmesh] : view.each()) {
+            auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
+            auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
+            auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
+            aabb.transform = translateMat * rotationMat * scaleMat;
+#if 1
+            aabb.color   = {0.f, 1.f, 0.f};
+            aabb.min     = cmesh.mesh.aabbMin;
+            aabb.max     = cmesh.mesh.aabbMax;
+            vkCmdPushConstants(
+                cmd,
+                mDrawMeshAABB.pipeline->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0,
+                sizeof(aabb),
+                reinterpret_cast<void*>(&aabb)
+            );
+
+            vkCmdDraw(cmd, 1, 1, 0, 0);
+#else
+            for(const auto& submesh : cmesh.mesh.subMeshs) {
+                aabb.color   = {0.f, 0.f, 1.f};
+                aabb.min = submesh.aabbMin;
+                aabb.max = submesh.aabbMax;
+                vkCmdPushConstants(
+                    cmd,
+                    mDrawMeshAABB.pipeline->getPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    0,
+                    sizeof(aabb),
+                    reinterpret_cast<void*>(&aabb)
+                );
+                vkCmdDraw(cmd, 1, 1, 0, 0);
+            }
+#endif
         }
     }
 }
