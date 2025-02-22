@@ -1,3 +1,5 @@
+#include "include/buffers.slang"
+
 struct DirectionalLight {
     float4 color;
     float4 direction;
@@ -174,17 +176,6 @@ float3 CalcSpotLight(SpotLight light, float3 diffuseColor, float3 specularColor,
 }
 
 
-struct PerFrameData
-{
-    float4x4 projection;
-    float4x4 view;
-    float3 viewPosition;
-    float4 ambientLight;
-    bool useBlinnPhong;
-    bool useGammeCorrection;
-    float gamma;
-}
-
 struct PushData {
     float4x4 model;
     float4x4 normalMatrix;
@@ -204,7 +195,6 @@ struct LightData {
     SpotLight        spotLights[4];
 };
 
-[[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
 [[vk::binding(1, 0)]] ConstantBuffer<LightData>   lightData;
 [[vk::binding(2, 1)]] Sampler2D diffuseMap;
 [[vk::binding(3, 1)]] Sampler2D specularMap;
@@ -234,7 +224,7 @@ struct PSOutput {
 VSOutput vs_main(const VSInput input) {
     VSOutput output;
 
-    var MVP = mul(perFrame.projection, mul(perFrame.view, push.model));
+    var MVP = mul(perFrame.viewProj, push.model);
     var worldPos = mul(push.model, float4(input.inPosition, 1.0f));
 
     output.outPosition = worldPos.xyz; // world space position

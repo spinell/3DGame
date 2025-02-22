@@ -1,14 +1,4 @@
-
-// TODO: Add pre computed viewProjection matrix
-struct PerFrameData {
-    float4x4 projection; // Camera projection matrix
-    float4x4 view;       // Camera view matrix
-    float3 viewPosition; // Camera position
-    float4 ambientLight;
-    bool useBlinnPhong;
-    bool useGammeCorrection;
-    float gamma;
-}
+#include "include/buffers.slang"
 
 struct PushData {
     float4x4 model;   // model transformation
@@ -17,8 +7,7 @@ struct PushData {
     float3   color;   // color of  the aabb
 };
 
-[[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
-[vk::push_constant]   PushData push;
+[vk::push_constant] PushData push;
 
 struct VSOutput {
     float4 aabbMin : POSITION0;
@@ -48,7 +37,7 @@ void gs_main(point const VSOutput input[1], inout LineStream<GSOutput> stream) {
     const float4 min = input[0].aabbMin;
     const float4 max = input[0].aabbMax;
 
-    const float4x4 MVP = mul(perFrame.projection, mul(perFrame.view, push.model));
+    const float4x4 MVP = mul(perFrame.viewProj, push.model);
 
     GSOutput output;
 

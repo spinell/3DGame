@@ -1,15 +1,5 @@
-struct PerFrameData
-{
-    float4x4 projection;
-    float4x4 view;
-    float3 viewPosition;
-    float4 ambientLight;
-    bool useBlinnPhong;
-    bool useGammeCorrection;
-    float gamma;
-}
+#include "include/buffers.slang"
 
-[[vk::binding(0, 0)]] ConstantBuffer<PerFrameData> perFrame;
 [[vk::binding(0, 1)]] SamplerCube skybox;
 
 struct VSOutput {
