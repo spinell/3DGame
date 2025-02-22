@@ -16,7 +16,9 @@ VulkanBufferPtr VulkanBuffer::CreateStagingBuffer(uint64_t sizeInByte, const cha
     return VulkanBuffer::Create(createInfo);
 }
 
-VulkanBuffer::VulkanBuffer(const VulkanBufferCreateInfo& createInfo) {
+VulkanBuffer::VulkanBuffer(const VulkanBufferCreateInfo& createInfo)
+    : mSiizeInByte(createInfo.sizeInByte) {
+
     VkBufferCreateInfo bufferCreateInfo{};
     bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferCreateInfo.pNext = nullptr;

@@ -1,6 +1,7 @@
 #include "Mesh.h"
 
 #include "GeometryGenerator.h"
+#include "vulkan/VulkanContext.h"
 
 namespace {
     void uploadData(const GeometryGenerator::MeshData& meshData, Mesh& mesh) {
@@ -35,7 +36,8 @@ Mesh Mesh::CreateMeshCube(float width, float height, float depth) {
     // upload vertex data
     Mesh mesh;
     uploadData(meshData, mesh);
-
+    VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshCube");
+    VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshCube");
     return mesh;
 }
 
@@ -50,7 +52,8 @@ Mesh Mesh::CreateGrid(float        width,
     // upload vertex data
     Mesh mesh;
     uploadData(meshData, mesh);
-
+    VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshGrid");
+    VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "MeshGrid");
     return mesh;
 }
 
@@ -62,7 +65,8 @@ Mesh Mesh::CreateGeoSphere(float radius, unsigned int subdivisionCount) {
     // upload vertex data
     Mesh mesh;
     uploadData(meshData, mesh);
-
+    VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "GeoSphereGrid");
+    VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "GeoSphereGrid");
     return mesh;
 }
 
@@ -78,7 +82,8 @@ Mesh Mesh::CreateCylinder(float        bottomRadius,
     // upload vertex data
     Mesh mesh;
     uploadData(meshData, mesh);
-
+    VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "CylinderMesh");
+    VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "CylinderMesh");
     return mesh;
 }
 
@@ -90,6 +95,7 @@ Mesh Mesh::CreateSphere(float radius, unsigned int sliceCount, unsigned int stac
     // upload vertex data
     Mesh mesh;
     uploadData(meshData, mesh);
-
+    VulkanContext::setDebugObjectName((uint64_t)mesh.vertexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "SphereMesh");
+    VulkanContext::setDebugObjectName((uint64_t)mesh.indexBuffer->getBuffer(), VK_OBJECT_TYPE_BUFFER, "SphereMesh");
     return mesh;
 }

@@ -30,6 +30,8 @@ add_executable(Game
     Renderer.cpp
     SceneRenderer.h
     SceneRenderer.cpp
+    AssimpImporter.h
+    AssimpImporter.cpp
     vulkan/VulkanBuffer.cpp
     vulkan/VulkanBuffer.h
     vulkan/VulkanGraphicPipeline.h
@@ -71,6 +73,7 @@ target_link_libraries(Game
         glm::glm-header-only
         EnTT::EnTT
         Engine::Engine
+        assimp::assimp
 )
 
 target_compile_definitions(Game
