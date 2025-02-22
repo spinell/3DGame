@@ -14,6 +14,7 @@
 struct PerFrameData {
     glm::mat4 projection;
     glm::mat4 view;
+    glm::mat4 viewProjection;
     glm::vec3 viewPosition;
     float _pad;
     glm::vec4 ambientLight;
@@ -21,9 +22,14 @@ struct PerFrameData {
     int useGammaCorrection = true;
     float gamma = 2.2f;
 };
-static_assert(offsetof(PerFrameData,useBlinnPhong) == 160);
-static_assert(offsetof(PerFrameData,useGammaCorrection) == 164);
-//static_assert(sizeof(PerFrameData) == sizeof(float) * 42);
+static_assert(offsetof(PerFrameData, projection) == 0);
+static_assert(offsetof(PerFrameData, view) == 64);
+static_assert(offsetof(PerFrameData, viewProjection) == 128);
+static_assert(offsetof(PerFrameData, viewPosition) == 192);
+static_assert(offsetof(PerFrameData, ambientLight) == 208);
+static_assert(offsetof(PerFrameData, useBlinnPhong) == 224);
+static_assert(offsetof(PerFrameData, useGammaCorrection) == 228);
+static_assert(offsetof(PerFrameData, gamma) == 232);
 
 struct PointLight {
     glm::vec4 position;
@@ -259,6 +265,7 @@ void SceneRenderer::render(entt::registry*  registry,
         PerFrameData perFrameData{};
         perFrameData.projection = proj;
         perFrameData.view = view;
+        perFrameData.viewProjection = proj * view;
         perFrameData.viewPosition = viewPosition;
         perFrameData.ambientLight = glm::vec4(mAmbientLight, 1.0f);
         perFrameData.useBlinnPhong = mUseBlinnPhong;
