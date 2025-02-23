@@ -238,6 +238,44 @@ SceneRenderer::SceneRenderer() {
         writeDescriptorSet.pBufferInfo     = &bufferInfo;
         vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
     }
+
+    // Draw mesh normal
+    {
+        mDrawMeshNormals.shader = VulkanShaderProgram::CreateFromSpirv({"./shaders/mesh_show_normals_vert.spv", "./shaders/mesh_show_normals_geo.spv", "./shaders/mesh_show_normals_frag.spv"});
+        VulkanContext::setDebugObjectName((uint64_t)mDrawMeshNormals.shader->getPipelineLayout(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, "MeshNormalPipelineLayout" );
+        assert(mDrawMeshNormals.shader);
+
+        VulkanGraphicPipelineCreateInfo createInfo{};
+        createInfo.name = "MeshNormal";
+        createInfo.shader = mDrawMeshNormals.shader;
+        createInfo.primitiveTopology =VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        createInfo.cullMode=VK_CULL_MODE_NONE;
+        createInfo.vertexStride = 44;
+        createInfo.vertexInput = {
+            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 * 3}, // position
+            {1, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 3}, // normal
+            {2, 0, VK_FORMAT_R32G32B32_SFLOAT, 4 * 6}, // tangent
+        };
+        mDrawMeshNormals.pipeline = VulkanGraphicPipeline::Create(createInfo);
+        assert(mDrawMeshNormals.pipeline);
+
+        mDrawMeshNormals.descriptorSet = mDescriptorPool.allocate(mDrawMeshNormals.pipeline->getDescriptorSetLayouts()[0]);
+        VulkanContext::setDebugObjectName((uint64_t)mDrawMeshNormals.descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "MeshNormal" );
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = mPerFrameBuffer->getBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range  = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet writeDescriptorSet{};
+        writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet.dstSet          = mDrawMeshNormals.descriptorSet;
+        writeDescriptorSet.dstBinding      = 0;
+        writeDescriptorSet.descriptorCount = 1;
+        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet.pBufferInfo     = &bufferInfo;
+        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+    }
 }
 
 SceneRenderer::~SceneRenderer() {
@@ -501,6 +539,45 @@ void SceneRenderer::render(entt::registry*  registry,
                 vkCmdDraw(cmd, 1, 1, 0, 0);
             }
 #endif
+        }
+    }
+
+    // Render Mesh Normals
+    {
+        vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mDrawMeshNormals.pipeline->getPipeline());
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            mDrawMeshNormals.pipeline->getPipelineLayout(),
+            0 /*firstSet*/,
+            1 /*nbSet*/,
+            &mDrawMeshNormals.descriptorSet,
+            0,
+            nullptr
+        );
+
+        struct {
+            glm::mat4 transform;
+            glm::mat4 normalMatrix;
+        }aabb;
+        auto view           = mRegistry->view<CTransform, CMesh>();
+        for (auto [entity, ctrans, cmesh] : view.each()) {
+            const auto translateMat  = glm::translate(glm::mat4(1), ctrans.position);
+            const auto rotationMat   = glm::eulerAngleYXZ(glm::radians(ctrans.rotation.y), glm::radians(ctrans.rotation.x), glm::radians(ctrans.rotation.z));
+            const auto scaleMat      = glm::scale(glm::mat4(1), ctrans.scale);
+            aabb.transform     = translateMat * rotationMat * scaleMat;
+            aabb.normalMatrix  = glm::transpose(glm::inverse(aabb.transform));
+            vkCmdPushConstants(
+                cmd,
+                mDrawMeshNormals.pipeline->getPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0,
+                sizeof(aabb),
+                reinterpret_cast<void*>(&aabb)
+            );
+
+            Renderer::DrawMesh(cmd, cmesh.mesh);
         }
     }
 }

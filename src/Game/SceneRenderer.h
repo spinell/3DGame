@@ -117,4 +117,10 @@ private:
         VulkanGraphicPipelinePtr             pipeline;
         VkDescriptorSet                      descriptorSet;
     } mDrawMeshAABB;
+
+    struct {
+        std::shared_ptr<VulkanShaderProgram> shader;
+        VulkanGraphicPipelinePtr             pipeline;
+        VkDescriptorSet                      descriptorSet;
+    } mDrawMeshNormals;
 };
