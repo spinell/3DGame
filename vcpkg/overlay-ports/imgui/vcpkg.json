@@ -128,10 +128,7 @@
       ]
     },
     "vulkan-binding": {
-      "description": "Make available Vulkan binding",
-      "dependencies": [
-        "vulkan"
-      ]
+      "description": "Make available Vulkan binding"
     },
     "wchar32": {
       "description": "Use WCHAR32 instead of WCHAR16"
