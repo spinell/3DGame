@@ -12,6 +12,14 @@ public:
     LayerStack() = default;
     ~LayerStack();
 
+    LayerStack(const LayerStack&) = delete;
+    LayerStack(LayerStack&&) = delete;
+
+    LayerStack& operator=(const LayerStack&) = delete;
+    LayerStack& operator=(LayerStack&&) = delete;
+
+    void clear();
+
     /// @brief
     /// @param index
     /// @return

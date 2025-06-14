@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 include(cmake/OutOfSourceBuild.cmake)
+include(cmake/glslang_compiler.cmake)
 
 project(3DGame
     VERSION 0.0.1
@@ -37,7 +38,12 @@ find_package(SDL3   3.1.6   EXACT CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 
 find_package(spdlog 1.15.0  EXACT CONFIG REQUIRED)
+find_package(glm    1.0.1   EXACT CONFIG REQUIRED)
+find_package(entt   3.14.0  EXACT CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(Stb)
+find_package(assimp)
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
 add_subdirectory(src/Engine)
 add_subdirectory(src/Editor)

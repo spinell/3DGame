@@ -1,7 +1,10 @@
 #pragma once
 
+#include "SceneRenderer.h"
+
 #include <Engine/Event.h>
 #include <Engine/Layer.h>
+#include <entt/entt.hpp>
 
 class TestLayer1 : public Engine::Layer {
 public:
@@ -18,4 +21,8 @@ public:
     void onImGuiRender() override;
 
     bool onEvent(const Engine::Event& event) override;
+
+private:
+    entt::registry mRegistry;
+    SceneRenderer*  mSceneRenderer{};
 };

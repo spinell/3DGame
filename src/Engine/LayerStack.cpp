@@ -5,6 +5,10 @@
 namespace Engine {
 
 LayerStack::~LayerStack() {
+    clear();
+}
+
+void LayerStack::clear() {
     for (Layer* layer : mLayers) {
         layer->onDetach();
         delete layer;
