@@ -1,10 +1,11 @@
 #pragma once
 #include "Mesh.h"
+#include "Terrain.h"
 
 #include "vulkan/VulkanBuffer.h"
 #include "vulkan/VulkanDescriptorPool.h"
-#include "vulkan/VulkanTexture.h"
 #include "vulkan/VulkanGraphicPipeline.h"
+#include "vulkan/VulkanTexture.h"
 #include "vulkan/vulkan.h"
 
 #include <entt/entt.hpp>
@@ -19,6 +20,25 @@ struct CTransform {
 };
 struct CMesh {
     Mesh mesh;
+};
+struct CTerrain {
+    std::shared_ptr<Terrain> terrain;
+    std::shared_ptr<VulkanTexture> diffuseMap0;
+    std::shared_ptr<VulkanTexture> specularMap0;
+    std::shared_ptr<VulkanTexture> normalMap0;
+    std::shared_ptr<VulkanTexture> diffuseMap1;
+    std::shared_ptr<VulkanTexture> specularMap1;
+    std::shared_ptr<VulkanTexture> normalMap1;
+    std::shared_ptr<VulkanTexture> diffuseMap2;
+    std::shared_ptr<VulkanTexture> specularMap2;
+    std::shared_ptr<VulkanTexture> normalMap2;
+    std::shared_ptr<VulkanTexture> diffuseMap3;
+    std::shared_ptr<VulkanTexture> specularMap3;
+    std::shared_ptr<VulkanTexture> normalMap3;
+    std::shared_ptr<VulkanTexture> diffuseMap4;
+    std::shared_ptr<VulkanTexture> specularMap4;
+    std::shared_ptr<VulkanTexture> normalMap4;
+    std::shared_ptr<VulkanTexture> blendMap;
 };
 struct CMaterial {
     glm::vec4        ambient = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -92,13 +112,23 @@ public:
     void      setAmbientLight(glm::vec3 ambient) { mAmbientLight = ambient; }
     glm::vec3 getAmbientLight() const { return mAmbientLight; }
 
+    void setTerrainAABBVisible(bool isVisible) {
+        mTerrainAABBVisible = isVisible;
+    }
+
+    void setTerrainVisible(bool isVisible) {
+        mTerrainVisible = isVisible;
+    }
 private:
     entt::registry*                      mRegistry{};
     bool                                 mUseBlinnPhong      = true;
     bool                                 mUseGammaCorrection = true;
     float                                mGamma              = 2.2f;
+    bool                                 mTerrainAABBVisible = false;
+    bool                                 mTerrainVisible     = true;
     glm::vec3                            mAmbientLight       = {0.01f, 0.01f, 0.01f};
     VulkanBufferPtr                      mPerFrameBuffer;
+    VulkanBufferPtr                      mTerrainSettings;
     VulkanBufferPtr                      mLightDataBuffer;
     std::shared_ptr<VulkanShaderProgram> mMeshShader;
     std::shared_ptr<VulkanShaderProgram> mSkyboxShader;
@@ -109,18 +139,25 @@ private:
 
     VulkanBufferPtr mSkyBoxVertexBuffer{};
     VulkanBufferPtr mSkyBoxIndexBuffer{};
-    VkDescriptorSet mSkyBoxDescriptorSet0 {};
-    VkDescriptorSet mSkyBoxDescriptorSet1 {};
+    VkDescriptorSet mSkyBoxDescriptorSet0{VK_NULL_HANDLE};
+    VkDescriptorSet mSkyBoxDescriptorSet1{VK_NULL_HANDLE};
 
     struct {
-        std::shared_ptr<VulkanShaderProgram> shader;
-        VulkanGraphicPipelinePtr             pipeline;
-        VkDescriptorSet                      descriptorSet;
+        std::shared_ptr<VulkanShaderProgram> shader{};
+        VulkanGraphicPipelinePtr             pipeline{};
+        VkDescriptorSet                      descriptorSet{VK_NULL_HANDLE};
     } mDrawMeshAABB;
 
     struct {
-        std::shared_ptr<VulkanShaderProgram> shader;
-        VulkanGraphicPipelinePtr             pipeline;
-        VkDescriptorSet                      descriptorSet;
+        std::shared_ptr<VulkanShaderProgram> shader{};
+        VulkanGraphicPipelinePtr             pipeline{};
+        VkDescriptorSet                      descriptorSet{VK_NULL_HANDLE};
     } mDrawMeshNormals;
+
+    struct {
+        std::shared_ptr<VulkanShaderProgram> shader{};
+        VulkanGraphicPipelinePtr             pipeline{};
+        VkDescriptorSet                      descriptorSet0{VK_NULL_HANDLE};
+        VkDescriptorSet                      descriptorSet1{VK_NULL_HANDLE};
+    } mDrawTerrain;
 };

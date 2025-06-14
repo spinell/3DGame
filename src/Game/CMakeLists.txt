@@ -32,6 +32,8 @@ add_executable(Game
     SceneRenderer.cpp
     AssimpImporter.h
     AssimpImporter.cpp
+    Terrain.h
+    Terrain.cpp
     vulkan/VulkanBuffer.cpp
     vulkan/VulkanBuffer.h
     vulkan/VulkanGraphicPipeline.h
@@ -93,6 +95,7 @@ target_sources(Game
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/mesh_show_normals.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/fullscreen.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/skybox.slang
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang
         ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/include/buffers.slang
 )
 
@@ -159,6 +162,21 @@ add_custom_command(
     USES_TERMINAL
 )
 
+add_custom_command(
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_vert.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_hull.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_dom.spv
+        ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_frag.spv
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_vert.spv -entry vs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_hull.spv -entry hs_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_dom.spv  -entry ds_main
+    COMMAND ${SLANGC_EXE} -warnings-as-errors 39019 -fvk-invert-y -O0 ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang -o ${CMAKE_CURRENT_BINARY_DIR}/shaders/terrain_frag.spv -entry ps_main
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/terrain.slang
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/Shaders/include/buffers.slang
+    VERBATIM
+    USES_TERMINAL
+)
 
 #
 # Add shaders

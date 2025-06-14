@@ -1,28 +1,5 @@
 #include "include/buffers.slang"
 
-struct DirectionalLight {
-    float4 color;
-    float4 direction;
-};
-struct PointLight {
-    float4 position;
-    float4 ambient;
-    float4 diffuse;
-    float4 specular;
-    float  range;
-    float  intensity; // not used, to remove ?
-    float  constant;  // not used, to remove ?
-    float  linear;    // not used, to remove ?
-    float  quadratic; // not used, to remove ?
-};
-struct SpotLight {
-    float4 color;
-    float4 position;
-    float4 direction;
-    float  range;
-    float  cutOffInner;
-    float  cutOffOuter;
-};
 
 float3 CalcDirectionalLight(DirectionalLight light, float3 diffuseColor, float3 specularColor, float3 pos, float3 normal, float3 viewPosition, bool blinnPhong) {
     // Negate the light direction.
@@ -186,16 +163,6 @@ struct PushData {
     float shininess;
 };
 
-struct LightData {
-    uint       nbLight;
-    uint       nbDirectionalLight;
-    uint       nbSpotLight;
-    PointLight       lights[512];
-    DirectionalLight directionalLights[4];
-    SpotLight        spotLights[4];
-};
-
-[[vk::binding(1, 0)]] ConstantBuffer<LightData>   lightData;
 [[vk::binding(2, 1)]] Sampler2D diffuseMap;
 [[vk::binding(3, 1)]] Sampler2D specularMap;
 [[vk::binding(4, 1)]] Sampler2D normalMap;

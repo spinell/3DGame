@@ -135,7 +135,7 @@ std::shared_ptr<VulkanShaderProgram> VulkanShaderProgram::CreateFromSpirv(
     struct SetData {
         std::vector<VkDescriptorSetLayoutBinding> vkBinding;
     };
-    std::unordered_map<uint32_t, SetData> setInfo;
+    std::map<uint32_t, SetData> setInfo;
     // std::unordered_map<uint32_t, std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>>
     // uniformBuffers; std::unordered_map<uint32_t, std::unordered_map<uint32_t,
     // VkDescriptorSetLayoutBinding>> combinedImageSampler;
@@ -221,11 +221,16 @@ std::shared_ptr<VulkanShaderProgram> VulkanShaderProgram::CreateFromSpirv(
                         }
                         case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                             auto& set               = setInfo[reflectBinding->set];
-                            auto& binding           = set.vkBinding.emplace_back();
-                            binding.binding         = reflectBinding->binding;
-                            binding.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                            binding.descriptorCount = 1;
-                            binding.stageFlags      = shaderStage;
+                            auto it = std::find_if(set.vkBinding.begin(), set.vkBinding.end(), [&reflectBinding](const VkDescriptorSetLayoutBinding& b){ return b.binding == reflectBinding->binding; });
+                            if(it == set.vkBinding.end()) {
+                                auto& binding           = set.vkBinding.emplace_back();
+                                binding.binding         = reflectBinding->binding;
+                                binding.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                                binding.descriptorCount = reflectBinding->count;
+                                binding.stageFlags      = shaderStage;
+                            } else {
+                                it->stageFlags |= shaderStage;
+                            }
                             break;
                         }
                         case SPV_REFLECT_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {

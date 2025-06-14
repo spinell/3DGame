@@ -38,7 +38,7 @@ private:
     glm::vec3 mRightDirection = {1.0f, 0.0f, 0.0f};    // camera right vector direction
     glm::vec3 mUpDirection    = {0.0f, 1.0f, 0.0f};    // camera up vector direction
 
-    constexpr static float MIN_SPEED{0.0005f}, MAX_SPEED{2.0f};
+    constexpr static float MIN_SPEED{0.0005f}, MAX_SPEED{20.0f};
 };
 
 } // namespace Engine

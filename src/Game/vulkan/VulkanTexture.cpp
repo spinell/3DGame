@@ -117,8 +117,8 @@ VulkanTexturePtr VulkanTexture::Create(std::filesystem::path path, bool sRGB, bo
         //
         // create staging buffer
         //
-        VkDeviceSize       imageSize = width * height * 4;
-        auto stagingBuffer = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
+        VkDeviceSize imageSize     = width * height * 4;
+        auto         stagingBuffer = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
         stagingBuffer->writeData(data, imageSize);
 
         stbi_image_free(data);
@@ -267,14 +267,14 @@ VulkanTexturePtr VulkanTexture::CreateCubeMap(std::filesystem::path paths[6], bo
                                            VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                            VK_ACCESS_2_TRANSFER_WRITE_BIT, 1, 6);
 
-        VulkanBufferPtr stagingBuffers[6];
+        VulkanBufferPtr    stagingBuffers[6];
         const VkDeviceSize imageSize = width * height * 4;
         for (unsigned i = 0; i < 6; i++) {
             stagingBuffers[i] = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
             stagingBuffers[i]->writeData(data[i], imageSize);
 
-            copyBufferToImage2(cmd, stagingBuffers[i]->getBuffer(), vulkanTexture->mImage, width, height,
-                               i);
+            copyBufferToImage2(cmd, stagingBuffers[i]->getBuffer(), vulkanTexture->mImage, width,
+                               height, i);
         }
 
         VulkanUtils::transitionImageLayout(
@@ -331,7 +331,10 @@ VulkanTexturePtr VulkanTexture::Create(const VulkanTexture2DCreateInfo& createIn
         //
         // create staging buffer
         //
-        const VkDeviceSize imageSize = createInfo.width * createInfo.height * 4; // FIXME: Assume RGBA format.
+        VkDeviceSize imageSize = createInfo.width * createInfo.height;
+        if(createInfo.format == VK_FORMAT_R8G8B8A8_UNORM || createInfo.format == VK_FORMAT_R32_SFLOAT)
+            imageSize *= 4; // FIXME: Assume RGBA format.
+
         auto stagingBuffer = VulkanBuffer::CreateStagingBuffer(imageSize, "Staging");
         stagingBuffer->writeData(data, imageSize);
 
@@ -349,8 +352,8 @@ VulkanTexturePtr VulkanTexture::Create(const VulkanTexture2DCreateInfo& createIn
 
 VulkanTexturePtr VulkanTexture::CreateDepthBuffer(uint32_t width, uint32_t height) {
     VulkanTextureDepthCreateInfo createInfo{};
-    createInfo.name = "DepthBuffer";
-    createInfo.width = width;
+    createInfo.name   = "DepthBuffer";
+    createInfo.width  = width;
     createInfo.height = height;
     return std::make_shared<VulkanTexture>(createInfo);
 }
@@ -537,6 +540,28 @@ VulkanTexture::VulkanTexture(const VulkanTexture2DCreateInfo& createInfo)
                                       createInfo.name.c_str());
     VulkanContext::setDebugObjectName((uint64_t)mView, VK_OBJECT_TYPE_IMAGE_VIEW,
                                       createInfo.name.c_str());
+
+    VkSamplerCreateInfo samplerCreateInfo{};
+    samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerCreateInfo.pNext;
+    samplerCreateInfo.flags;
+    samplerCreateInfo.magFilter               = VK_FILTER_LINEAR;
+    samplerCreateInfo.minFilter               = VK_FILTER_LINEAR;
+    samplerCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerCreateInfo.mipLodBias              = 0.0f;
+    samplerCreateInfo.anisotropyEnable        = VK_FALSE;
+    samplerCreateInfo.maxAnisotropy           = 0;
+    samplerCreateInfo.compareEnable           = VK_FALSE;
+    samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+    samplerCreateInfo.minLod                  = 0;
+    samplerCreateInfo.maxLod                  = 0;
+    samplerCreateInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+    VK_CHECK(vkCreateSampler(VulkanContext::getDevice(), &samplerCreateInfo, nullptr,
+                             &mSampler));
 }
 
 VulkanTexture::VulkanTexture(const VulkanTextureCubeMapCreateInfo& createInfo)
@@ -607,13 +632,12 @@ VulkanTexture::VulkanTexture(const VulkanTextureCubeMapCreateInfo& createInfo)
 }
 
 VulkanTexture::VulkanTexture(const VulkanTextureDepthCreateInfo& createInfo)
-    : mWidth(createInfo.width)
-    , mHeight(createInfo.height)
-{
-        const VkSampleCountFlagBits nbSamples = VK_SAMPLE_COUNT_1_BIT;
-        const VkExtent3D            extent    = {createInfo.width, createInfo.height, 1};
-        const VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    : mWidth(createInfo.width), mHeight(createInfo.height) {
+    const VkSampleCountFlagBits nbSamples = VK_SAMPLE_COUNT_1_BIT;
+    const VkExtent3D            extent    = {createInfo.width, createInfo.height, 1};
+    const VkImageUsageFlags     usage     = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
     //
     // Create the image
@@ -647,22 +671,22 @@ VulkanTexture::VulkanTexture(const VulkanTextureDepthCreateInfo& createInfo)
     VK_CHECK(vmaCreateImage(VulkanContext::getVmaAllocator(), &imageCreateInfo, &allocInfo, &mImage,
                             &mAllocation, nullptr /*allocationInfo*/));
 
-
     //
     // Create the image view
     //
-    VkImageViewCreateInfo ivCreateInfo           = {};
-    ivCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    ivCreateInfo.pNext                           = nullptr;
-    ivCreateInfo.flags                           = 0;
-    ivCreateInfo.image                           = mImage;
-    ivCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-    ivCreateInfo.format                          = VK_FORMAT_D24_UNORM_S8_UINT;
-    ivCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-    ivCreateInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+    VkImageViewCreateInfo ivCreateInfo = {};
+    ivCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    ivCreateInfo.pNext                 = nullptr;
+    ivCreateInfo.flags                 = 0;
+    ivCreateInfo.image                 = mImage;
+    ivCreateInfo.viewType              = VK_IMAGE_VIEW_TYPE_2D;
+    ivCreateInfo.format                = VK_FORMAT_D24_UNORM_S8_UINT;
+    ivCreateInfo.components.r          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.g          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.b          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.components.a          = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivCreateInfo.subresourceRange.aspectMask =
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
     ivCreateInfo.subresourceRange.baseMipLevel   = 0;
     ivCreateInfo.subresourceRange.levelCount     = 1;
     ivCreateInfo.subresourceRange.baseArrayLayer = 0;

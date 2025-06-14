@@ -151,6 +151,10 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments    = colorBlendAttachments.data();
 
+    VkPipelineTessellationStateCreateInfo tessellationStateCreateInfo{};
+    tessellationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+    tessellationStateCreateInfo.patchControlPoints = 4;
+
     // =================================================================================
     //                          Dynamic rendering
     // =================================================================================
@@ -183,7 +187,11 @@ VulkanGraphicPipelinePtr VulkanGraphicPipeline::Create(
     vkcreateInfo.pStages                       = createInfo.shader->getShaderShages().data();
     vkcreateInfo.pVertexInputState             = &vertexInputInfo;
     vkcreateInfo.pInputAssemblyState           = &inputAssembly;
-    vkcreateInfo.pTessellationState            = nullptr;
+    if(createInfo.primitiveTopology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST){
+        vkcreateInfo.pTessellationState            = &tessellationStateCreateInfo;
+    } else {
+        vkcreateInfo.pTessellationState            = nullptr;
+    }
     vkcreateInfo.pViewportState                = &viewportState;
     vkcreateInfo.pRasterizationState           = &rasterizer;
     vkcreateInfo.pMultisampleState             = &multisampling;

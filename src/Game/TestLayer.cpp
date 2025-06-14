@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "CameraController.h"
 #include "Mesh.h"
+#include "Terrain.h"
 #include "Renderer.h"
 
 #include "Spirv/SpirvReflection.h"
@@ -14,6 +15,8 @@
 #include "vulkan/VulkanImGuiRenderer.h"
 #include "vulkan/VulkanTexture.h"
 #include "vulkan/VulkanGraphicPipeline.h"
+
+#include "AssimpImporter.h"
 
 #include <Engine/Application.h>
 #include <Engine/Event.h>
@@ -38,6 +41,8 @@ VulkanSwapchain* vulkanSwapchain{};
 std::shared_ptr<VulkanShaderProgram> fullScreenShader;
 VulkanGraphicPipelinePtr  pipelineFullScreen;
 
+std::shared_ptr<Terrain> gTerrain;
+
 TestLayer1::TestLayer1(const char* name) : Engine::Layer(name) {}
 VulkanTexturePtr depthBuffer;
 Engine::CameraController cameraController;
@@ -48,6 +53,8 @@ entt::entity light2;
 entt::entity light3;
 entt::entity flashLight;
 
+bool gWalkCamMode = true;
+
 TestLayer1::~TestLayer1() {}
 
 void TestLayer1::onAttach() {
@@ -55,7 +62,9 @@ void TestLayer1::onAttach() {
     Renderer::Init();
     mSceneRenderer = new SceneRenderer();
 
-    cameraController.setPosition({0, 4, 0});
+    gTerrain = std::make_shared<Terrain>();
+
+    cameraController.setPosition({0, gTerrain->getHeight(0, 0), 0});
 
     // generate mipmap for normal and specular map ?
     gTextureCache["ab_crate_a"]        = VulkanTexture::Create("./data/ab_crate_a.png", true, true);
@@ -70,6 +79,32 @@ void TestLayer1::onAttach() {
     gTextureCache["FloorSandStone"]    = VulkanTexture::Create("./data/FloorDiffuse.png", true, true); // FloorAmbientOcclusion
     gTextureCache["FloorSandStone_nm"] = VulkanTexture::Create("./data/FloorNormal.png", false, true);
     gTextureCache["FloorSandStone_sm"] = VulkanTexture::Create("./data/FloorSpacular.png", false, true);
+
+    gTextureCache["edf_soldier_a"]    = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_d.tga", true, true);
+    gTextureCache["edf_soldier_a_nm"] = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_n.tga", false, true);
+    gTextureCache["edf_soldier_a_sm"] = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_s.tga", false, true);
+
+    gTextureCache["grass"]                 = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_d.tga", true, true);
+    gTextureCache["grass_s"]               = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_s.tga", true, true);
+    gTextureCache["grass_n"]               = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_n.tga", false, true);
+
+    gTextureCache["coast_land_rocks_01"]   = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_d.tga", true, true);
+    gTextureCache["coast_land_rocks_01_s"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_s.tga", true, true);
+    gTextureCache["coast_land_rocks_01_n"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_n.tga", false, true);
+
+    gTextureCache["coast_sand_rocks_02"]   = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_d.tga", true, true);
+    gTextureCache["coast_sand_rocks_02_s"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_s.tga", true, true);
+    gTextureCache["coast_sand_rocks_02_n"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_n.tga", false, true);
+
+    gTextureCache["brown_mud_02"]          = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_d.tga", true, true);
+    gTextureCache["brown_mud_02_s"]        = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_s.tga", true, true);
+    gTextureCache["brown_mud_02_n"]        = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_n.tga", false, true);
+
+    gTextureCache["stones"]                = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_d.tga", true, true);
+    gTextureCache["stones_s"]              = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_s.tga", true, true);
+    gTextureCache["stones_n"]              = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_n.tga", false, true);
+
+    gTextureCache["TerrainBlendMap"] = VulkanTexture::Create("./data/terrain/blend.png", false, false);
 
     std::filesystem::path cubeMapPaths[6] = {
         "./data/skybox/sleepyhollow_ft.jpg", // right +z
@@ -96,9 +131,17 @@ void TestLayer1::onAttach() {
     meshs.push_back(meshSphere);
     meshs.push_back(meshGeoSphere);
 
+    AssimpImporter assimpImporter;
+    auto importedMesh = assimpImporter.importMesh("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_soldier_a.obj");
+    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/_3dModels/Architecture/Fantasy Castle/Castle/Castle FBX.fbx");
+    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/_Games/Quake 3/baseq3 (Original Game)/pak0.pk3");
+    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_soldier_a.dae");
+    //auto importedMesh = assimpImporter.importMesh("h:/GameAssets/3dAssets/Character/Soldier (2)/soldier.fbx");
+    //auto importedMesh = assimpImporter.importMesh("C:/Users/luc/Downloads/UGBXDQ044OXRB86WRDN5X81WI_Animated/UGBXDQ044OXRB86WRDN5X81WI.glb");
+    meshs.push_back(importedMesh);
+#if 1
     mRegistry.ctx().emplace<CSkyBox>().texture = gTextureCache["SkyBox"];
 
-    // floor
     {
         auto e                           = mRegistry.create();
         mRegistry.emplace<CMesh>(e).mesh = meshGrid;
@@ -106,6 +149,34 @@ void TestLayer1::onAttach() {
         trans.position                   = {0, 0, 0};
         trans.rotation                   = {0, 0, 0};
         trans.scale                      = {30, 1, 30};
+        CTerrain& terrain                = mRegistry.emplace<CTerrain>(e);
+        terrain.terrain                  = gTerrain;
+        terrain.diffuseMap0              = gTextureCache["grass"];
+        terrain.specularMap0             = gTextureCache["grass_s"];
+        terrain.normalMap0               = gTextureCache["grass_n"];
+        terrain.diffuseMap1              = gTextureCache["stones"];
+        terrain.specularMap1             = gTextureCache["stones_s"];
+        terrain.normalMap1               = gTextureCache["stones_n"];
+        terrain.diffuseMap2              = gTextureCache["coast_sand_rocks_02"];
+        terrain.specularMap2             = gTextureCache["coast_sand_rocks_02_s"];
+        terrain.normalMap2               = gTextureCache["coast_sand_rocks_02_n"];
+        terrain.diffuseMap3              = gTextureCache["brown_mud_02"];
+        terrain.specularMap3             = gTextureCache["brown_mud_02_s"];
+        terrain.normalMap3               = gTextureCache["brown_mud_02_n"];
+        terrain.diffuseMap4              = gTextureCache["coast_land_rocks_01"];
+        terrain.specularMap4             = gTextureCache["coast_land_rocks_01_s"];
+        terrain.normalMap4               = gTextureCache["coast_land_rocks_01_n"];
+        terrain.blendMap                 = gTextureCache["TerrainBlendMap"];
+    }
+
+    // floor
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = meshGrid;
+        CTransform& trans                = mRegistry.emplace<CTransform>(e);
+        trans.position                   = {-64, 0, 0};
+        trans.rotation                   = {0, 0, 0};
+        trans.scale                      = {1, 1, 1};
         CMaterial& mat                   = mRegistry.emplace<CMaterial>(e);
         mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
         mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -222,7 +293,21 @@ void TestLayer1::onAttach() {
         mat.normalMap                             = gTextureCache["ab_crate_a_nm"];
         mat.specularMap                           = gTextureCache["ab_crate_a_sm"];
     }
-
+#endif
+    {
+        auto e                           = mRegistry.create();
+        mRegistry.emplace<CMesh>(e).mesh = importedMesh;
+        auto& transform                  = mRegistry.emplace<CTransform>(e);
+        transform.position               = {-10, 0.0f, 10};
+        transform.rotation               = {0.0f, 45.0f, 0.0f};
+        auto& mat                        = mRegistry.emplace<CMaterial>(e);
+        mat.ambient                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuse                      = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.specular                     = {1.0f, 1.0f, 1.0f, 1.0f};
+        mat.diffuseMap                   = gTextureCache["edf_soldier_a"];
+        mat.normalMap                    = gTextureCache["edf_soldier_a_nm"];
+        mat.specularMap                  = gTextureCache["edf_soldier_a_sm"];
+    }
 
 auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 position) {
         // cylinder
@@ -252,6 +337,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
             mat.specularMap                           = gTextureCache["FloorSandStone_sm"];
         }
     };
+#if 1
     createCynlinderAndSphere({9.0f, 1.0f, 5.0f});
     createCynlinderAndSphere({9.0f, 1.0f, 0.0f});
     createCynlinderAndSphere({9.0f, 1.0f, -5.0f});
@@ -261,7 +347,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
     createCynlinderAndSphere({-3.0f, 1.0f, -7.0f});
     createCynlinderAndSphere({0.0f, 1.0f, -7.0f});
     createCynlinderAndSphere({3.0f, 1.0f, -7.0f});
-
+#endif
     // lights
     auto createPointLight = [this, &meshSphere](const glm::vec3& position, float intensity, float range) -> entt::entity{
         auto e                                    = mRegistry.create();
@@ -304,7 +390,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         mat.normalMap                             = gTextureCache["ab_crate_a_sm"];
         return e;
     };
-    //createDirectionalLight({0.0, -1.0, 1.0});
+    createDirectionalLight({0.0, -1.0, 1.0});
 
     auto createSpotLight = [this, &meshSphere](const glm::vec3& position, const glm::vec3& direction) -> entt::entity{
         auto e                                    = mRegistry.create();
@@ -314,7 +400,7 @@ auto createCynlinderAndSphere = [this, &meshCylinder, &meshGeoSphere](glm::vec3 
         light.direction                           = direction;
         light.cutOffAngle                         = 15.f;
         light.range                               = 10.0f;
-        mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
+        //mRegistry.emplace<CMesh>(e).mesh          = meshSphere;
         auto& mat                                 = mRegistry.emplace<CMaterial>(e);
         mat.ambient                               = {1.0f, 1.0f, 0.0f, 1.0f};
         mat.diffuse                               = {1.0f, 1.0f, 0.0f, 1.0f};
@@ -422,6 +508,11 @@ void TestLayer1::onUpdate(float timeStep) {
 
     if(!ImGui::GetIO().WantCaptureKeyboard || !ImGui::GetIO().WantCaptureMouse) {
         cameraController.onUpdate(timeStep);
+        if(gWalkCamMode) {
+            const auto camPos = cameraController.getPosition();
+            const float height = gTerrain->getHeight(camPos.x, camPos.z);
+            cameraController.setPosition({camPos.x, height + 2.0f, camPos.z});
+        }
     }
 
     auto& lightTrans = mRegistry.get<CTransform>(flashLight);
@@ -615,64 +706,91 @@ void TestLayer1::onUpdate(float timeStep) {
 }
 
 void TestLayer1::onImGuiRender() {
-    ImGui::Begin("Explorer");
+    ImGuiStyle& style = ImGui::GetStyle();
 
-    static bool useGamma = mSceneRenderer->isUseGammaCorrection();
-    if(ImGui::Checkbox("Use Gamma correction", &useGamma)) {
-        mSceneRenderer->setUseGammaCorrection(useGamma);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Appearing);
+    ImGui::SetNextWindowBgAlpha(0.0f);
+    ImGui::SetNextWindowViewport(ImGui::GetMainViewport()->ID);
+    ImGui::Begin("Debug info", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("%.3f ms/frame", 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
+    ImGui::Text("Position:  %.2f,%.2f,%.2f", cameraController.getPosition().x, cameraController.getPosition().y, cameraController.getPosition().z);
+    ImGui::Text("Direction: %.2f,%.2f,%.2f", cameraController.getDirection().x, cameraController.getDirection().y, cameraController.getDirection().z);
+    ImGui::End();
+
+    ImGui::PopStyleVar(1);
+
+    if(ImGui::Begin("Explorer")) {
+        static bool useGamma = mSceneRenderer->isUseGammaCorrection();
+        if(ImGui::Checkbox("Use Gamma correction", &useGamma)) {
+            mSceneRenderer->setUseGammaCorrection(useGamma);
+        }
+
+        ImGui::SameLine();
+
+        static float gammaValue = mSceneRenderer->getGammaCorrectionValue();
+        if(ImGui::DragFloat("Gamma", &gammaValue, 1.0f, 0.0f, 10.0f)) {
+            mSceneRenderer->setGammaCorrectionValue(gammaValue);
+        }
+
+        ImGui::Checkbox("WalkCamMode", &gWalkCamMode);
+
+        static bool displayTerrain = true;
+        if(ImGui::Checkbox("Display Terrain", &displayTerrain)) {
+            mSceneRenderer->setTerrainVisible(displayTerrain);
+        }
+
+        static bool displayTerrainAABB = false;
+        if(ImGui::Checkbox("Display Terrain AABB", &displayTerrainAABB)) {
+            mSceneRenderer->setTerrainAABBVisible(displayTerrainAABB);
+        }
+
+        static auto ambientLight = mSceneRenderer->getAmbientLight();
+        if(ImGui::ColorEdit3("Ambient Light", &ambientLight.x, ImGuiColorEditFlags_Float)) {
+            mSceneRenderer->setAmbientLight(ambientLight);
+        }
+
+        for(const auto& entity : mRegistry.view<CDirectionalLight>()) {
+            auto& light = mRegistry.get<CDirectionalLight>(entity);
+            ImGui::TextUnformatted("Directional Light");
+            ImGui::ColorEdit3("Color:", &light.color.x);
+            ImGui::DragFloat3("Direction:", &light.direction.x, 1.0f, -1.0f, 1.0f);
+        }
+        unsigned int i = 0;
+        for(const auto& entity : mRegistry.view<CTransform, CPointLight>()) {
+            auto& trans = mRegistry.get<CTransform>(entity);
+            auto& light = mRegistry.get<CPointLight>(entity);
+
+            ImGui::Text("Point Lights %i", i);
+            ImGui::PushID(i);
+            ImGui::Checkbox("Enable",     &light.enable);
+            ImGui::DragFloat3("Position", &trans.position.x);
+            ImGui::ColorEdit3("Color",    &light.diffuse.x);
+            ImGui::DragFloat("Range",     &light.range, 1.0f, 0.1f);
+            ImGui::PopID();
+            i++;
+        }
+        for(const auto& entity : mRegistry.view<CTransform, CSpotLight>()) {
+            auto& trans = mRegistry.get<CTransform>(entity);
+            auto& light = mRegistry.get<CSpotLight>(entity);
+
+            ImGui::Text("Spot Lights %i", i);
+            ImGui::PushID(i);
+            ImGui::Checkbox("Enable",      &light.enable);
+            ImGui::DragFloat3("Position",  &trans.position.x);
+            ImGui::ColorEdit3("Color",     &light.color.x);
+            ImGui::DragFloat("Range",      &light.range, 1.0f, 0.1f);
+            ImGui::DragFloat("CutOffAngle",&light.cutOffAngle, 1.0f, 1.0f, 180.f);
+            ImGui::PopID();
+            i++;
+        }
+
+        VulkanImGuiRenderer::AddImage(gTextureCache["WhiteTexture"], ImVec2(100,100));
+        VulkanImGuiRenderer::AddImage(gTextureCache["BlackTexture"], ImVec2(100,100));
+        VulkanImGuiRenderer::AddImage(gTextureCache["CheckBoard"], ImVec2(100,100));
     }
-
-    ImGui::SameLine();
-
-    static float gammaValue = mSceneRenderer->getGammaCorrectionValue();
-    if(ImGui::DragFloat("Gamma", &gammaValue, 1.0f, 0.0f, 10.0f)) {
-        mSceneRenderer->setGammaCorrectionValue(gammaValue);
-    }
-
-    static auto ambientLight = mSceneRenderer->getAmbientLight();
-    if(ImGui::ColorEdit3("Ambient Light", &ambientLight.x, ImGuiColorEditFlags_Float)) {
-        mSceneRenderer->setAmbientLight(ambientLight);
-    }
-
-    for(const auto& entity : mRegistry.view<CDirectionalLight>()) {
-        auto& light = mRegistry.get<CDirectionalLight>(entity);
-        ImGui::TextUnformatted("Directional Light");
-        ImGui::ColorEdit3("Color:", &light.color.x);
-        ImGui::ColorEdit3("Direction:", &light.direction.x);
-    }
-    unsigned int i = 0;
-    for(const auto& entity : mRegistry.view<CTransform, CPointLight>()) {
-        auto& trans = mRegistry.get<CTransform>(entity);
-        auto& light = mRegistry.get<CPointLight>(entity);
-
-        ImGui::Text("Point Lights %i", i);
-        ImGui::PushID(i);
-        ImGui::Checkbox("Enable",     &light.enable);
-        ImGui::DragFloat3("Position", &trans.position.x);
-        ImGui::ColorEdit3("Color",    &light.diffuse.x);
-        ImGui::DragFloat("Range",     &light.range, 1.0f, 0.1f);
-        ImGui::PopID();
-        i++;
-    }
-    for(const auto& entity : mRegistry.view<CTransform, CSpotLight>()) {
-        auto& trans = mRegistry.get<CTransform>(entity);
-        auto& light = mRegistry.get<CSpotLight>(entity);
-
-        ImGui::Text("Spot Lights %i", i);
-        ImGui::PushID(i);
-        ImGui::Checkbox("Enable",      &light.enable);
-        ImGui::DragFloat3("Position",  &trans.position.x);
-        ImGui::ColorEdit3("Color",     &light.color.x);
-        ImGui::DragFloat("Range",      &light.range, 1.0f, 0.1f);
-        ImGui::DragFloat("CutOffAngle",&light.cutOffAngle, 1.0f, 1.0f, 180.f);
-        ImGui::PopID();
-        i++;
-    }
-
-    VulkanImGuiRenderer::AddImage(gTextureCache["WhiteTexture"], ImVec2(100,100));
-    VulkanImGuiRenderer::AddImage(gTextureCache["BlackTexture"], ImVec2(100,100));
-    VulkanImGuiRenderer::AddImage(gTextureCache["CheckBoard"], ImVec2(100,100));
-
     ImGui::End();
 }
 

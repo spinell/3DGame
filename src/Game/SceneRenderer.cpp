@@ -11,12 +11,24 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/euler_angles.hpp>
 
+namespace {
+    void planeNormalize(glm::vec4& v) {
+        float LengthSq         = v.x * v.x + v.y * v.y + v.z * v.z;
+        float ReciprocalLength = 1.0f / sqrt(LengthSq);
+        v.x                    = v.x * ReciprocalLength;
+        v.y                    = v.y * ReciprocalLength;
+        v.z                    = v.z * ReciprocalLength;
+        v.w                    = v.w * ReciprocalLength;
+    }
+    }; // namespace
+
 struct PerFrameData {
     glm::mat4 projection;
     glm::mat4 view;
     glm::mat4 viewProjection;
     glm::vec3 viewPosition;
     float _pad;
+    glm::vec4 worldFrustumPlanes[6];
     glm::vec4 ambientLight;
     int useBlinnPhong;
     int useGammaCorrection = true;
@@ -26,10 +38,19 @@ static_assert(offsetof(PerFrameData, projection) == 0);
 static_assert(offsetof(PerFrameData, view) == 64);
 static_assert(offsetof(PerFrameData, viewProjection) == 128);
 static_assert(offsetof(PerFrameData, viewPosition) == 192);
-static_assert(offsetof(PerFrameData, ambientLight) == 208);
-static_assert(offsetof(PerFrameData, useBlinnPhong) == 224);
-static_assert(offsetof(PerFrameData, useGammaCorrection) == 228);
-static_assert(offsetof(PerFrameData, gamma) == 232);
+//static_assert(offsetof(PerFrameData, ambientLight) == 208);
+//static_assert(offsetof(PerFrameData, useBlinnPhong) == 224);
+//static_assert(offsetof(PerFrameData, useGammaCorrection) == 228);
+//static_assert(offsetof(PerFrameData, gamma) == 232);
+
+struct TerrainSetting {
+    float tessFactor[4];
+    float insideTessFactor[2];
+    float minDistance;
+    float maxDistance;
+    float minTess;
+	float maxTess;
+};
 
 struct PointLight {
     glm::vec4 position;
@@ -260,6 +281,7 @@ SceneRenderer::SceneRenderer() {
         assert(mDrawMeshNormals.pipeline);
 
         mDrawMeshNormals.descriptorSet = mDescriptorPool.allocate(mDrawMeshNormals.pipeline->getDescriptorSetLayouts()[0]);
+        VulkanContext::setDebugObjectName((uint64_t)mDrawMeshNormals.pipeline->getDescriptorSetLayouts()[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "MeshNormalSetLayout0" );
         VulkanContext::setDebugObjectName((uint64_t)mDrawMeshNormals.descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "MeshNormal" );
 
         VkDescriptorBufferInfo bufferInfo{};
@@ -274,6 +296,58 @@ SceneRenderer::SceneRenderer() {
         writeDescriptorSet.descriptorCount = 1;
         writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         writeDescriptorSet.pBufferInfo     = &bufferInfo;
+        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+    }
+
+    // Terrain
+    {
+        VulkanBufferCreateInfo bufferCreateInfo{};
+        bufferCreateInfo.name           = "TerrainSetting";
+        bufferCreateInfo.sizeInByte     = sizeof(TerrainSetting);
+        bufferCreateInfo.usage          = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        bufferCreateInfo.memoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        mTerrainSettings                = VulkanBuffer::Create(bufferCreateInfo);
+
+        mDrawTerrain.shader = VulkanShaderProgram::CreateFromSpirv(
+            {"./shaders/terrain_vert.spv", "./shaders/terrain_hull.spv", "./shaders/terrain_dom.spv", "./shaders/terrain_frag.spv"});
+        VulkanContext::setDebugObjectName((uint64_t)mDrawTerrain.shader->getPipelineLayout(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, "TerrainPipelineLayout");
+        VulkanContext::setDebugObjectName((uint64_t)mDrawTerrain.shader->getDescriptorSetLayouts()[0], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "TerrainDescriptorSet0");
+        assert(mDrawTerrain.shader);
+
+        VulkanGraphicPipelineCreateInfo createInfo{};
+        createInfo.name              = "Terrain";
+        createInfo.shader            = mDrawTerrain.shader;
+        createInfo.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        createInfo.cullMode          = VK_CULL_MODE_BACK_BIT;
+        createInfo.vertexStride      = sizeof(Terrain::Vertex);
+        createInfo.vertexInput       = {
+            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Terrain::Vertex, pos)},  // position
+            {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Terrain::Vertex, tex)},     // uv
+            {2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Terrain::Vertex, boundsY)}, // bound
+        };
+        mDrawTerrain.pipeline = VulkanGraphicPipeline::Create(createInfo);
+        assert(mDrawTerrain.pipeline);
+
+        mDrawTerrain.descriptorSet0 = mDescriptorPool.allocate(mDrawTerrain.pipeline->getDescriptorSetLayouts()[0]);
+        VulkanContext::setDebugObjectName((uint64_t)mDrawTerrain.descriptorSet0, VK_OBJECT_TYPE_DESCRIPTOR_SET, "TerrainDescriptorSet0" );
+
+        VkDescriptorBufferInfo bufferInfo[2]{};
+        bufferInfo[0].buffer = mPerFrameBuffer->getBuffer();
+        bufferInfo[0].offset = 0;
+        bufferInfo[0].range  = VK_WHOLE_SIZE;
+        bufferInfo[1].buffer = mLightDataBuffer->getBuffer();
+        bufferInfo[1].offset = 0;
+        bufferInfo[1].range  = VK_WHOLE_SIZE;
+        VkWriteDescriptorSet writeDescriptorSet{};
+        writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet0;
+        writeDescriptorSet.dstBinding      = 0;
+        writeDescriptorSet.descriptorCount = 1;
+        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSet.pBufferInfo     = &bufferInfo[0];
+        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+        writeDescriptorSet.dstBinding      = 1;
+        writeDescriptorSet.pBufferInfo     = &bufferInfo[1];
         vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
     }
 }
@@ -305,11 +379,62 @@ void SceneRenderer::render(entt::registry*  registry,
         perFrameData.view = view;
         perFrameData.viewProjection = proj * view;
         perFrameData.viewPosition = viewPosition;
+        // left
+        perFrameData.worldFrustumPlanes[0].x = perFrameData.viewProjection[0][3] + perFrameData.viewProjection[0][0];
+        perFrameData.worldFrustumPlanes[0].y = perFrameData.viewProjection[1][3] + perFrameData.viewProjection[1][0];
+        perFrameData.worldFrustumPlanes[0].z = perFrameData.viewProjection[2][3] + perFrameData.viewProjection[2][0];
+        perFrameData.worldFrustumPlanes[0].w = perFrameData.viewProjection[3][3] + perFrameData.viewProjection[3][0];
+        // right
+        perFrameData.worldFrustumPlanes[1].x = perFrameData.viewProjection[0][3] - perFrameData.viewProjection[0][0];
+        perFrameData.worldFrustumPlanes[1].y = perFrameData.viewProjection[1][3] - perFrameData.viewProjection[1][0];
+        perFrameData.worldFrustumPlanes[1].z = perFrameData.viewProjection[2][3] - perFrameData.viewProjection[2][0];
+        perFrameData.worldFrustumPlanes[1].w = perFrameData.viewProjection[3][3] - perFrameData.viewProjection[3][0];
+        // bottom
+        perFrameData.worldFrustumPlanes[2].x = perFrameData.viewProjection[0][3] + perFrameData.viewProjection[0][1];
+        perFrameData.worldFrustumPlanes[2].y = perFrameData.viewProjection[1][3] + perFrameData.viewProjection[1][1];
+        perFrameData.worldFrustumPlanes[2].z = perFrameData.viewProjection[2][3] + perFrameData.viewProjection[2][1];
+        perFrameData.worldFrustumPlanes[2].w = perFrameData.viewProjection[3][3] + perFrameData.viewProjection[3][1];
+        // top
+        perFrameData.worldFrustumPlanes[3].x = perFrameData.viewProjection[0][3] - perFrameData.viewProjection[0][1];
+        perFrameData.worldFrustumPlanes[3].y = perFrameData.viewProjection[1][3] - perFrameData.viewProjection[1][1];
+        perFrameData.worldFrustumPlanes[3].z = perFrameData.viewProjection[2][3] - perFrameData.viewProjection[2][1];
+        perFrameData.worldFrustumPlanes[3].w = perFrameData.viewProjection[3][3] - perFrameData.viewProjection[3][1];
+        // near
+        perFrameData.worldFrustumPlanes[4].x = perFrameData.viewProjection[0][2];
+        perFrameData.worldFrustumPlanes[4].y = perFrameData.viewProjection[1][2];
+        perFrameData.worldFrustumPlanes[4].z = perFrameData.viewProjection[2][2];
+        perFrameData.worldFrustumPlanes[4].w = perFrameData.viewProjection[3][2];
+        // far
+        perFrameData.worldFrustumPlanes[5].x = perFrameData.viewProjection[0][3] - perFrameData.viewProjection[0][2];
+        perFrameData.worldFrustumPlanes[5].y = perFrameData.viewProjection[1][3] - perFrameData.viewProjection[1][2];
+        perFrameData.worldFrustumPlanes[5].z = perFrameData.viewProjection[2][3] - perFrameData.viewProjection[2][2];
+        perFrameData.worldFrustumPlanes[5].w = perFrameData.viewProjection[3][3] - perFrameData.viewProjection[3][2];
+
+        // Normalize the plane equations.
+        for (int i = 0; i < 6; ++i) {
+            planeNormalize(perFrameData.worldFrustumPlanes[i]);
+        }
+
         perFrameData.ambientLight = glm::vec4(mAmbientLight, 1.0f);
         perFrameData.useBlinnPhong = mUseBlinnPhong;
         perFrameData.useGammaCorrection = mUseGammaCorrection;
         perFrameData.gamma = mGamma;
         mPerFrameBuffer->writeData(&perFrameData, sizeof(perFrameData));
+    }
+
+    {
+        TerrainSetting ts{};
+        ts.tessFactor[0]       = 64;
+        ts.tessFactor[1]       = 64;
+        ts.tessFactor[2]       = 64;
+        ts.tessFactor[3]       = 64;
+        ts.insideTessFactor[0] = 64;
+        ts.insideTessFactor[1] = 64;
+        ts.maxTess = 6;
+        ts.minTess = 0;
+        ts.maxDistance = 1000.0f;
+        ts.minDistance = 20.0f;
+        mTerrainSettings->writeData(&ts, sizeof(ts));
     }
 
     //
@@ -578,6 +703,206 @@ void SceneRenderer::render(entt::registry*  registry,
             );
 
             Renderer::DrawMesh(cmd, cmesh.mesh);
+        }
+    }
+
+    // Render Terrain
+    {
+        //vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mDrawTerrain.pipeline->getPipeline());
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            mDrawTerrain.pipeline->getPipelineLayout(),
+            0 /*firstSet*/,
+            1 /*nbSet*/,
+            &mDrawTerrain.descriptorSet0,
+            0,
+            nullptr
+        );
+
+        if(mTerrainVisible) {
+            auto view           = mRegistry->view<CTransform, CTerrain>();
+            for (auto [entity, ctrans, cterrain] : view.each()) {
+                if(!mDrawTerrain.descriptorSet1) {
+                    mDrawTerrain.descriptorSet1 = mDescriptorPool.allocate(mDrawTerrain.pipeline->getDescriptorSetLayouts()[1]);
+                    VulkanContext::setDebugObjectName((uint64_t)mDrawTerrain.descriptorSet0, VK_OBJECT_TYPE_DESCRIPTOR_SET, "TerrainDescriptorSet1" );
+                    VulkanContext::setDebugObjectName((uint64_t)mDrawTerrain.pipeline->getDescriptorSetLayouts()[1], VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "TerrainDescriptorSetLayout1" );
+
+                    VkDescriptorImageInfo descriptorImageInfo;
+                    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    descriptorImageInfo.imageView   = cterrain.terrain->getHeightMap()->getImageView();
+                    descriptorImageInfo.sampler     = cterrain.terrain->getHeightMap()->getSampler();
+
+                    VkWriteDescriptorSet writeDescriptorSet{};
+                    writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                    writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                    writeDescriptorSet.dstBinding      = 0;
+                    writeDescriptorSet.descriptorCount = 1;
+                    writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    writeDescriptorSet.pImageInfo      = &descriptorImageInfo;
+                    vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+
+                    // buffers
+                    {
+                        VkDescriptorBufferInfo descriptorInfo;
+                        descriptorInfo.buffer = mTerrainSettings->getBuffer();
+                        descriptorInfo.offset = 0;
+                        descriptorInfo.range  = VK_WHOLE_SIZE;
+
+                        writeDescriptorSet.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                        writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                        writeDescriptorSet.dstBinding      = 1;
+                        writeDescriptorSet.descriptorCount = 1;
+                        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        writeDescriptorSet.pBufferInfo      = &descriptorInfo;
+                        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+                    }
+
+                    // diffuse map
+                    {
+                        VkDescriptorImageInfo imageInfo[5]{};
+                        imageInfo[0].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[0].imageView      = cterrain.diffuseMap0->getImageView();
+                        imageInfo[0].sampler        = cterrain.diffuseMap0->getSampler();
+                        imageInfo[1].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[1].imageView      = cterrain.diffuseMap1->getImageView();
+                        imageInfo[1].sampler        = cterrain.diffuseMap1->getSampler();
+                        imageInfo[2].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[2].imageView      = cterrain.diffuseMap2->getImageView();
+                        imageInfo[2].sampler        = cterrain.diffuseMap2->getSampler();
+                        imageInfo[3].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[3].imageView      = cterrain.diffuseMap3->getImageView();
+                        imageInfo[3].sampler        = cterrain.diffuseMap3->getSampler();
+                        imageInfo[4].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[4].imageView      = cterrain.diffuseMap4->getImageView();
+                        imageInfo[4].sampler        = cterrain.diffuseMap4->getSampler();
+                        writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                        writeDescriptorSet.dstBinding      = 2;
+                        writeDescriptorSet.descriptorCount = 5;
+                        writeDescriptorSet.dstArrayElement = 0;
+                        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                        writeDescriptorSet.pImageInfo      = imageInfo;
+                        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+                    }
+                    // normal map
+                    {
+                        VkDescriptorImageInfo imageInfo[5]{};
+                        imageInfo[0].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[0].imageView      = cterrain.normalMap0->getImageView();
+                        imageInfo[0].sampler        = cterrain.normalMap0->getSampler();
+                        imageInfo[1].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[1].imageView      = cterrain.normalMap1->getImageView();
+                        imageInfo[1].sampler        = cterrain.normalMap1->getSampler();
+                        imageInfo[2].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[2].imageView      = cterrain.normalMap2->getImageView();
+                        imageInfo[2].sampler        = cterrain.normalMap2->getSampler();
+                        imageInfo[3].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[3].imageView      = cterrain.normalMap3->getImageView();
+                        imageInfo[3].sampler        = cterrain.normalMap3->getSampler();
+                        imageInfo[4].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[4].imageView      = cterrain.normalMap4->getImageView();
+                        imageInfo[4].sampler        = cterrain.normalMap4->getSampler();
+                        writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                        writeDescriptorSet.dstBinding      = 3;
+                        writeDescriptorSet.descriptorCount = 5;
+                        writeDescriptorSet.dstArrayElement = 0;
+                        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                        writeDescriptorSet.pImageInfo      = imageInfo;
+                        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+                    }
+                    // specular map
+                    {
+                        VkDescriptorImageInfo imageInfo[5]{};
+                        imageInfo[0].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[0].imageView      = cterrain.specularMap0->getImageView();
+                        imageInfo[0].sampler        = cterrain.specularMap0->getSampler();
+                        imageInfo[1].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[1].imageView      = cterrain.specularMap1->getImageView();
+                        imageInfo[1].sampler        = cterrain.specularMap1->getSampler();
+                        imageInfo[2].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[2].imageView      = cterrain.specularMap2->getImageView();
+                        imageInfo[2].sampler        = cterrain.specularMap2->getSampler();
+                        imageInfo[3].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[3].imageView      = cterrain.specularMap3->getImageView();
+                        imageInfo[3].sampler        = cterrain.specularMap3->getSampler();
+                        imageInfo[4].imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                        imageInfo[4].imageView      = cterrain.specularMap4->getImageView();
+                        imageInfo[4].sampler        = cterrain.specularMap4->getSampler();
+                        writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                        writeDescriptorSet.dstBinding      = 4;
+                        writeDescriptorSet.descriptorCount = 5;
+                        writeDescriptorSet.dstArrayElement = 0;
+                        writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                        writeDescriptorSet.pImageInfo      = imageInfo;
+                        vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+                    }
+
+                    // blend map
+                    descriptorImageInfo.imageLayout    = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    descriptorImageInfo.imageView      = cterrain.blendMap->getImageView();
+                    descriptorImageInfo.sampler        = cterrain.blendMap->getSampler();
+                    writeDescriptorSet.dstSet          = mDrawTerrain.descriptorSet1;
+                    writeDescriptorSet.dstBinding      = 5;
+                    writeDescriptorSet.descriptorCount = 1;
+                    writeDescriptorSet.dstArrayElement = 0;
+                    writeDescriptorSet.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    writeDescriptorSet.pImageInfo      = &descriptorImageInfo;
+                    vkUpdateDescriptorSets(VulkanContext::getDevice(), 1, &writeDescriptorSet, 0, nullptr);
+                }
+                vkCmdBindDescriptorSets(
+                    cmd,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    mDrawTerrain.pipeline->getPipelineLayout(),
+                    1 /*firstSet*/,
+                    1 /*nbSet*/,
+                    &mDrawTerrain.descriptorSet1,
+                    0,
+                    nullptr
+                );
+
+                VkDeviceSize offset{};
+                VkBuffer buffer = cterrain.terrain->getVertexBuffer()->getBuffer();
+                vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &offset);
+                vkCmdBindIndexBuffer(cmd, cterrain.terrain->getIndexBuffer()->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+                vkCmdDrawIndexed(cmd, cterrain.terrain->getNumIndices(), 1, 0, 0, 1);
+
+                if(mTerrainAABBVisible) {
+                    vkCmdSetPrimitiveTopology(cmd, VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mDrawMeshAABB.pipeline->getPipeline());
+                    vkCmdBindDescriptorSets(
+                        cmd,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        mDrawMeshAABB.pipeline->getPipelineLayout(),
+                        0 /*firstSet*/,
+                        1 /*nbSet*/,
+                        &mDrawMeshAABB.descriptorSet,
+                        0,
+                        nullptr
+                    );
+
+                    struct {
+                        glm::mat4 transform;
+                        glm::vec3 min;
+                        float _pad0;
+                        glm::vec3 max;
+                        float _pad1;
+                        glm::vec3 color;
+                    }aabb;
+                    for(unsigned i = 0; i < 1024; i++) {
+                        aabb.transform = glm::mat4(1);
+                        if(i % 2) {
+                            aabb.color   = {1.f, 1.f, 1.f};
+                        } else {
+                            aabb.color   = {0.f, 0.f, 1.f};
+                        }
+
+                        cterrain.terrain->getBound(i, aabb.min, aabb.max);
+                        vkCmdPushConstants(cmd, mDrawMeshAABB.pipeline->getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(aabb), reinterpret_cast<void*>(&aabb));
+                        vkCmdDraw(cmd, 1, 1, 0, 0);
+                    }
+                }
+            }
         }
     }
 }
