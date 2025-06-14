@@ -16,29 +16,29 @@ public:
     /// @brief
     /// @param spirv
     /// @return
-    static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
+    [[nodiscard]] static std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
         std::vector<std::vector<uint32_t>> spirv);
 
     /// @brief Create a shader from a list a multiple spiv binary data.
     /// @param spirv
     /// @return
-    static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
+    [[nodiscard]] static std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
         std::initializer_list<std::span<const uint32_t>> spirv);
 
     /// @brief Create a shader from a list a multiple spiv binary files.
     /// @param paths
     /// @return
-    static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
+    [[nodiscard]] static std::shared_ptr<VulkanShaderProgram> CreateFromSpirv(
         std::initializer_list<std::filesystem::path> paths);
 
     /// @brief
     /// @return
-    static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromString(std::string source);
+    [[nodiscard]] static std::shared_ptr<VulkanShaderProgram> CreateFromString(std::string source);
 
     /// @brief
     /// @param paths
     /// @return
-    static [[nodiscard]] std::shared_ptr<VulkanShaderProgram> CreateFromFile(
+    [[nodiscard]] static std::shared_ptr<VulkanShaderProgram> CreateFromFile(
         std::vector<std::filesystem::path> paths);
 
     VulkanShaderProgram() = default;
