@@ -199,14 +199,23 @@ target_glsl_shaders(Game
 #									Copy shaders and data
 ############################################################################################################
 ADD_CUSTOM_COMMAND (
-	TARGET Game POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E echo "Copying  ${CMAKE_CURRENT_SOURCE_DIR}/data to $<TARGET_FILE_DIR:Game>/data"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/data   $<TARGET_FILE_DIR:Game>/data
-	VERBATIM
+    TARGET Game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink  ${CMAKE_CURRENT_SOURCE_DIR}/data $<TARGET_FILE_DIR:Game>/data
+    VERBATIM
 )
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(is_multi_config)
+    ADD_CUSTOM_COMMAND (
+        TARGET Game POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink  ${CMAKE_CURRENT_BINARY_DIR}/shaders $<TARGET_FILE_DIR:Game>/shaders
+        VERBATIM
+    )
+endif()
 
 ###############################################################
 #		Group sources for IDI like Visual Studio
 ###############################################################
 #get_target_property(Game_SOURCES Game SOURCES)
 #source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${Game_SOURCES})
+
+set_property(TARGET Game PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:Game>)
