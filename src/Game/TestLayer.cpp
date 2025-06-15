@@ -80,29 +80,29 @@ void TestLayer1::onAttach() {
     gTextureCache["FloorSandStone_nm"] = VulkanTexture::Create("./data/FloorNormal.png", false, true);
     gTextureCache["FloorSandStone_sm"] = VulkanTexture::Create("./data/FloorSpacular.png", false, true);
 
-    gTextureCache["edf_soldier_a"]    = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_d.tga", true, true);
-    gTextureCache["edf_soldier_a_nm"] = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_n.tga", false, true);
-    gTextureCache["edf_soldier_a_sm"] = VulkanTexture::Create("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_body_s.tga", false, true);
+    gTextureCache["edf_soldier_a"]    = VulkanTexture::Create("./data/model/edf_soldier/edf_body_d.tga", true, true);
+    gTextureCache["edf_soldier_a_nm"] = VulkanTexture::Create("./data/model/edf_soldier/edf_body_n.tga", false, true);
+    gTextureCache["edf_soldier_a_sm"] = VulkanTexture::Create("./data/model/edf_soldier/edf_body_s.tga", false, true);
 
-    gTextureCache["grass"]                 = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_d.tga", true, true);
-    gTextureCache["grass_s"]               = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_s.tga", true, true);
-    gTextureCache["grass_n"]               = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_n.tga", false, true);
+    gTextureCache["grass"]                 = VulkanTexture::Create("./data/textures/pattern_216/T_216_d.tga", true, true); // grass
+    gTextureCache["grass_s"]               = VulkanTexture::Create("./data/textures/pattern_216/T_216_s.tga", true, true);
+    gTextureCache["grass_n"]               = VulkanTexture::Create("./data/textures/pattern_216/T_216_n.tga", false, true);
 
-    gTextureCache["coast_land_rocks_01"]   = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_d.tga", true, true);
-    gTextureCache["coast_land_rocks_01_s"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_s.tga", true, true);
-    gTextureCache["coast_land_rocks_01_n"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_218/T_218_n.tga", false, true);
+    gTextureCache["coast_land_rocks_01"]   = VulkanTexture::Create("./data/textures/pattern_218/T_218_d.tga", true, true); // rock
+    gTextureCache["coast_land_rocks_01_s"] = VulkanTexture::Create("./data/textures/pattern_218/T_218_s.tga", true, true);
+    gTextureCache["coast_land_rocks_01_n"] = VulkanTexture::Create("./data/textures/pattern_218/T_218_n.tga", false, true);
 
-    gTextureCache["coast_sand_rocks_02"]   = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_d.tga", true, true);
-    gTextureCache["coast_sand_rocks_02_s"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_s.tga", true, true);
-    gTextureCache["coast_sand_rocks_02_n"] = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_216/T_216_n.tga", false, true);
+    gTextureCache["coast_sand_rocks_02"]   = VulkanTexture::Create("./data/textures/pattern_216/T_216_d.tga", true, true); // grass
+    gTextureCache["coast_sand_rocks_02_s"] = VulkanTexture::Create("./data/textures/pattern_216/T_216_s.tga", true, true);
+    gTextureCache["coast_sand_rocks_02_n"] = VulkanTexture::Create("./data/textures/pattern_216/T_216_n.tga", false, true);
 
-    gTextureCache["brown_mud_02"]          = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_d.tga", true, true);
-    gTextureCache["brown_mud_02_s"]        = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_s.tga", true, true);
-    gTextureCache["brown_mud_02_n"]        = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_54_redux/REDUX/pattern_270/T_270_n.tga", false, true);
+    gTextureCache["brown_mud_02"]          = VulkanTexture::Create("./data/textures/pattern_91/T_91_d.tga", true, true); // tiles
+    gTextureCache["brown_mud_02_s"]        = VulkanTexture::Create("./data/textures/pattern_91/T_91_s.tga", true, true);
+    gTextureCache["brown_mud_02_n"]        = VulkanTexture::Create("./data/textures/pattern_91/T_91_n.tga", false, true);
 
-    gTextureCache["stones"]                = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_d.tga", true, true);
-    gTextureCache["stones_s"]              = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_s.tga", true, true);
-    gTextureCache["stones_n"]              = VulkanTexture::Create("H:/GameAssets/textures/_pack/Free Materials Pack/textures_pack_43_redux/REDUX/pattern_215/T_215_n.tga", false, true);
+    gTextureCache["stones"]                = VulkanTexture::Create("./data/textures/pattern_215/T_215_d.tga", true, true); // grass with rock
+    gTextureCache["stones_s"]              = VulkanTexture::Create("./data/textures/pattern_215/T_215_s.tga", true, true);
+    gTextureCache["stones_n"]              = VulkanTexture::Create("./data/textures/pattern_215/T_215_n.tga", false, true);
 
     gTextureCache["TerrainBlendMap"] = VulkanTexture::Create("./data/terrain/blend.png", false, false);
 
@@ -132,12 +132,7 @@ void TestLayer1::onAttach() {
     meshs.push_back(meshGeoSphere);
 
     AssimpImporter assimpImporter;
-    auto importedMesh = assimpImporter.importMesh("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_soldier_a.obj");
-    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/_3dModels/Architecture/Fantasy Castle/Castle/Castle FBX.fbx");
-    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/_Games/Quake 3/baseq3 (Original Game)/pak0.pk3");
-    //auto importedMesh = assimpImporter.importMesh("H:/GameAssets/3dAssets/Character/EDF soldier/EDF_soldier_A_DNF/edf_soldier_a.dae");
-    //auto importedMesh = assimpImporter.importMesh("h:/GameAssets/3dAssets/Character/Soldier (2)/soldier.fbx");
-    //auto importedMesh = assimpImporter.importMesh("C:/Users/luc/Downloads/UGBXDQ044OXRB86WRDN5X81WI_Animated/UGBXDQ044OXRB86WRDN5X81WI.glb");
+    auto importedMesh = assimpImporter.importMesh("./data/model/edf_soldier/edf_soldier_a.obj");
     meshs.push_back(importedMesh);
 #if 1
     mRegistry.ctx().emplace<CSkyBox>().texture = gTextureCache["SkyBox"];

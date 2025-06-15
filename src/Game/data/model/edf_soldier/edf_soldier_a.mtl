@@ -1,0 +1,26 @@
+#
+#
+
+newmtl EDF_Body
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd edf_body_d.tga
+map_Nn edf_body_n.tga
+map_Ks edf_body_s.tga
+
+newmtl EDF_Helmet
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd edf_helmet_d.tga
+map_Nn edf_helmet_n.tga
+map_Ks edf_helmet_s.tga
